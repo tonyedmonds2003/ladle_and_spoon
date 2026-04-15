@@ -1868,11 +1868,17 @@ function trendArrow(t){return t.includes('📈')?'📈':t.includes('📉')?'📉
 
 // ════ NAVIGATION ════
 function sw(v, btn){
+  // Block direct navigation to admin if not authenticated
+  if(v === 'admin' && !sessionAuthenticated()){
+    showPinPrompt();
+    return;
+  }
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.bn').forEach(e=>e.classList.remove('active'));
   $('v-'+v).classList.add('active');
   if(btn) btn.classList.add('active');
   $('cpb').style.display = v==='admin' ? 'none' : 'flex';
+  if(v === 'admin') isAdmin = true;
 }
 function toggleMode(){
   if(isAdmin){
