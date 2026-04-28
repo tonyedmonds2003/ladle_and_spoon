@@ -1908,20 +1908,23 @@ async function registerPushToken(){
       await loadFirebaseSDK();
     }
 
-    // Explicitly register the service worker with the correct path
-    // This is critical for GitHub Pages which serves from a subdirectory
+    // Register service worker at exact path alongside index.html
+    // Unregister any old/duplicate service workers first
     const swPath = window.location.pathname.replace(/\/[^\/]*$/, '/') + 'firebase-messaging-sw.js';
     console.log('Registering service worker at:', swPath);
-    
-    let swReg;
-    try {
-      swReg = await navigator.serviceWorker.register(swPath);
-      console.log('Service worker registered:', swReg.scope);
-    } catch(swErr) {
-      console.log('SW registration failed, trying root path:', swErr);
-      // Fallback to root path
-      swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+
+    // Unregister any stale service workers to prevent duplicates
+    const existingRegs = await navigator.serviceWorker.getRegistrations();
+    for(const reg of existingRegs){
+      if(!reg.scope.includes(window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/'))){
+        console.log('Unregistering stale SW:', reg.scope);
+        await reg.unregister();
+      }
     }
+
+    // Register the single correct service worker
+    const swReg = await navigator.serviceWorker.register(swPath);
+    console.log('Service worker registered:', swReg.scope);
 
     // Wait for service worker to be ready
     await navigator.serviceWorker.ready;
