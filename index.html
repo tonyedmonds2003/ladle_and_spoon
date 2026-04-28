@@ -449,24 +449,36 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
     <button onclick="event.stopPropagation();if(typeof sw!=='undefined')sw('sub',$'nav-sub')">See Plans</button>
   </div>
   <div class="sh"><div class="st">Notifications</div></div>
+
+  <!-- Push notification opt-in card -->
+  <div class="nc gold" id="notif-optin-card" style="align-items:center;padding:14px 16px">
+    <div style="font-size:28px;margin-right:4px">🔔</div>
+    <div class="nb" style="flex:1">
+      <strong>Get notified when the menu drops</strong>
+      <span>Be the first to know every Tuesday — straight to your phone</span>
+      <div id="notif-status" style="font-size:12px;margin-top:4px"></div>
+    </div>
+    <button id="notif-btn" onclick="enableNotif()"
+      style="white-space:nowrap;padding:8px 14px;border-radius:20px;border:none;background:var(--f);color:#fff;font-size:13px;font-weight:500;cursor:pointer;flex-shrink:0">
+      Turn On
+    </button>
+  </div>
+
+  <!-- Pinned reminder card -->
+  <div class="nc red">
+    <div class="nd"></div>
+    <div class="nb"><strong>⏳ Order deadline: Friday 6 PM</strong><span>Lia cooks to order every weekend!</span></div>
+    <div class="nt">Pinned</div>
+  </div>
+
+  <!-- Rate last week card -->
   <div class="nc gold">
     <div class="nd"></div>
     <div class="nb">
       <strong>⭐ Rate last week's soups!</strong>
       <span>How did you enjoy your last order? Tap to leave a quick review.</span>
     </div>
-    <div class="nt" style="cursor:pointer" onclick="if(typeof sw!=='undefined')sw('menu',$'nav-menu')">Rate →</div>
-  </div>
-  <div class="nc">
-    <div class="nd"></div>
-    <div class="nb"><strong>🍜 This week's menu is live!</strong><span>5 items available — order by Friday 6 PM!</span></div>
-    <div class="nt">Just now</div>
-  </div>
-
-  <div class="nc red">
-    <div class="nd"></div>
-    <div class="nb"><strong>⏳ Order deadline: Friday 6 PM</strong><span>Lia cooks to order every weekend!</span></div>
-    <div class="nt">Pinned</div>
+    <div class="nt" style="cursor:pointer" onclick="if(typeof sw!=='undefined')sw('menu',$('nav-menu'))">Rate →</div>
   </div>
 </div>
 
@@ -1351,7 +1363,16 @@ const ROUTE = [
 ];
 
 // ════ STATE ════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6AK_Ig7q-WISVqHXeR4Puv7dyeUlv70FrKpaUI2rX_hB0dnkytc9w22XObRKNxrRGDA/exec'; // ← paste Web App URL after deploying
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6AK_Ig7q-WISVqHXeR4Puv7dyeUlv70FrKpaUI2rX_hB0dnkytc9w22XObRKNxrRGDA/exec';
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDYt3OeHN0yorpDAWu4MPvH55GnkO_yD44",
+  authDomain: "ladle-and-spoon-push-notify.firebaseapp.com",
+  projectId: "ladle-and-spoon-push-notify",
+  storageBucket: "ladle-and-spoon-push-notify.firebasestorage.app",
+  messagingSenderId: "432229384791",
+  appId: "1:432229384791:web:4db16a355c485a91a95912"
+};
+const VAPID_KEY = 'BJFMSeMr6wjx_D0GfnH3dolcN_PQFgQh6xP9RuUKSJ2GLUwq-1fv8GUwWJg36LMSQy6U6kLk4FHNjaF4zpM1Ikk'; // ← paste Web App URL after deploying
 let cart=[], szi={}, isAdmin=false, selPlan=null, mySub=null, starPending={};
 
 
@@ -1698,16 +1719,26 @@ function requestNotifPermission(){
     }
   });
 }
-function sendMenuNotification(menuItems){
-  if(Notification.permission!=='granted')return;
-  const names=menuItems.slice(0,3).map(m=>m.n).join(', ');
-  new Notification('🥣 This week\'s menu is live!',{
-    body:names+' and more. Order by Friday 6 PM!',
-    icon:'/icon.png'
-  });
+function sendMenuNotification(items){
+  // This fires from the Admin → Menu "Send Push Notification" button
+  // It sends a notification to all subscribed customers via Firebase
+  const title   = '🥣 This week\'s menu is live!';
+  const body    = items.length + ' items ready — order by Friday 6 PM for Monday delivery!';
+  // We broadcast via Apps Script which reads tokens from the Push Tokens sheet
+  if(APPS_SCRIPT_URL){
+    fetch(APPS_SCRIPT_URL, {
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify({ type:'broadcast', title, body }),
+      mode:    'no-cors'
+    }).catch(()=>{});
+  }
+  toast('📣 Push notification sent to all subscribers!');
 }
 
-
+function sendAllNotif(){
+  sendMenuNotification(MENU_ITEMS);
+}
 function togglePaid(btn){
   const name=btn.dataset.n;
   let paid={};try{paid=JSON.parse(localStorage.getItem('route_paid')||'{}');}catch(e){}
@@ -1851,6 +1882,108 @@ function loadSavedPhotos(){
   }catch(e){}
 }
 
+function enableNotif(){
+  if(!('Notification' in window) || !('serviceWorker' in navigator)){
+    toast('Push notifications are not supported on this browser');
+    return;
+  }
+  if(Notification.permission === 'denied'){
+    toast('Notifications blocked — please enable in your browser settings');
+    return;
+  }
+  Notification.requestPermission().then(function(permission){
+    if(permission === 'granted'){
+      registerPushToken();
+    } else {
+      toast('Notifications not enabled — you can turn them on anytime');
+    }
+  });
+}
+
+async function registerPushToken(){
+  try {
+    // Dynamically load Firebase SDK (no bundler needed)
+    if(!window.firebase_messaging){
+      await loadFirebaseSDK();
+    }
+    const token = await window.firebase_messaging.getToken({ vapidKey: VAPID_KEY });
+    if(token){
+      localStorage.setItem('notif_enabled','1');
+      localStorage.setItem('notif_token', token);
+      // Send token to Apps Script for storage
+      const prof = getProfile();
+      if(APPS_SCRIPT_URL && prof.email){
+        fetch(APPS_SCRIPT_URL, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            type:  'notification_token',
+            email: prof.email,
+            token: token
+          }),
+          mode:'no-cors'
+        }).catch(()=>{});
+      }
+      updateNotifUI(true);
+      toast('🔔 Notifications enabled! You\'ll hear from us when the menu drops.');
+    }
+  } catch(err){
+    console.log('Push token error:', err);
+    toast('Could not enable notifications — try again later');
+  }
+}
+
+async function loadFirebaseSDK(){
+  return new Promise(function(resolve, reject){
+    // Load Firebase App
+    var s1 = document.createElement('script');
+    s1.src = 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
+    s1.onload = function(){
+      // Load Firebase Messaging
+      var s2 = document.createElement('script');
+      s2.src = 'https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js';
+      s2.onload = function(){
+        var app = firebase.initializeApp(FIREBASE_CONFIG);
+        window.firebase_messaging = firebase.messaging();
+        resolve();
+      };
+      s2.onerror = reject;
+      document.head.appendChild(s2);
+    };
+    s1.onerror = reject;
+    document.head.appendChild(s1);
+  });
+}
+
+function disableNotif(){
+  localStorage.removeItem('notif_enabled');
+  localStorage.removeItem('notif_token');
+  updateNotifUI(false);
+  toast('Notifications turned off');
+}
+
+function updateNotifUI(enabled){
+  var btn = $('notif-btn');
+  var status = $('notif-status');
+  if(btn){
+    btn.textContent = enabled ? '🔕 Turn Off Notifications' : '🔔 Notify Me When Menu Drops';
+    btn.onclick = enabled ? disableNotif : enableNotif;
+  }
+  if(status){
+    status.textContent = enabled ? '✅ Notifications are on' : '';
+    status.style.color = 'var(--f)';
+  }
+}
+
+function initNotifUI(){
+  var enabled = localStorage.getItem('notif_enabled') === '1';
+  // Check if token was already granted
+  if(enabled && Notification.permission !== 'granted'){
+    localStorage.removeItem('notif_enabled');
+    enabled = false;
+  }
+  updateNotifUI(enabled);
+}
 window.onload = () => {
   buildMenu(); buildRepo(); buildDash(); buildOrders(); buildCusts();
   buildReact(); buildAreas(); buildRoute(); buildWkMenu(); buildSoupIntel();
