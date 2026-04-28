@@ -2168,7 +2168,11 @@ function refreshAdminData(){
   _adminRefreshing = true;
   showAdminLoading(true);
 
-  fetch(APPS_SCRIPT_URL + '?type=get_dashboard')
+  // Apps Script redirects — must follow redirect and handle CORS
+  fetch(APPS_SCRIPT_URL + '?type=get_dashboard', {
+    redirect: 'follow',
+    headers:  { 'Content-Type': 'application/json' }
+  })
     .then(function(res){ return res.json(); })
     .then(function(data){
       if(data && !data.error){
@@ -2180,8 +2184,9 @@ function refreshAdminData(){
       }
     })
     .catch(function(err){
-      console.log('Admin data fetch failed (using cached data):', err);
-      // Silently fall back to hardcoded data — no error shown to Lia
+      console.error('Admin data fetch error:', err.message || err);
+      // Show error in admin so we can diagnose
+      toast('⚠️ Could not reach Sheet: ' + (err.message || 'network error'));
     })
     .finally(function(){
       _adminRefreshing = false;
