@@ -29,7 +29,7 @@ messaging.onBackgroundMessage(function(payload) {
     badge: 'https://res.cloudinary.com/drcjmvjc9/image/upload/v1762996224/Ladle_and_Spoon_Logo_Clean_pylcav.png',
     tag:   'ladle-spoon-notification',
     requireInteraction: false,
-    data:  { url: (payload.data && payload.data.url) ? payload.data.url : self.location.origin }
+    data:  { url: (payload.data && payload.data.url) ? payload.data.url : 'https://tonyedmonds2003.github.io/ladle_and_spoon/' }
   };
 
   return self.registration.showNotification(title, options);
@@ -38,7 +38,7 @@ messaging.onBackgroundMessage(function(payload) {
 // Tap notification to open the app
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || self.location.origin;
+  const url = (event.notification.data && event.notification.data.url) || 'https://tonyedmonds2003.github.io/ladle_and_spoon/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
