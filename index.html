@@ -552,9 +552,9 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
 
   <div class="asec active" id="adm-dash">
     <div class="kgrid">
-      <div class="kc"><div class="kl">This Week</div><div class="kv">$714</div><div class="ks">23 orders · closed</div></div>
-      <div class="kc"><div class="kl">Yearly Revenue</div><div class="kv">$27,668</div><div class="ks">57 weeks tracked</div></div>
-      <div class="kc"><div class="kl">Avg Weekly</div><div class="kv">$518</div><div class="ks">Best: $1,033 (3/31)</div></div>
+      <div class="kc"><div class="kl">This Week</div><div class="kv" id="kpi-week-rev">$714</div><div class="ks" id="kpi-week-orders">23 orders · closed</div></div>
+      <div class="kc"><div class="kl">Yearly Revenue</div><div class="kv" id="kpi-yearly-rev">$27,668</div><div class="ks" id="kpi-yearly-weeks">57 weeks tracked</div></div>
+      <div class="kc"><div class="kl">Avg Weekly</div><div class="kv" id="kpi-avg-weekly">$518</div><div class="ks" id="kpi-avg-best">Best: $1,033 (3/31)</div></div>
       <div class="kc"><div class="kl">Subscribers</div><div class="kv" id="sub-count-dash">0</div><div class="ks">Weekly recurring</div></div>
     </div>
     <div class="ccrd">
@@ -2167,9 +2167,6 @@ function refreshAdminData(){
   fetch(APPS_SCRIPT_URL + '?type=get_dashboard')
     .then(function(res){ return res.json(); })
     .then(function(data){
-      console.log('Dashboard data full:', JSON.stringify(data).substring(0, 500));
-      console.log('Type:', typeof data, Array.isArray(data) ? 'IS ARRAY' : 'is object');
-      console.log('Keys:', data ? Object.keys(data) : 'null');
       if(data && !data.error){
         sessionStorage.setItem('admin_data', JSON.stringify(data));
         sessionStorage.setItem('admin_data_time', Date.now().toString());
@@ -2289,9 +2286,44 @@ function applyAdminData(data){
       buildPhotoUploader();
     }
 
-    console.log('Admin data refreshed from Sheet — ' + new Date().toLocaleTimeString());
+    // Update KPI dashboard cards
+    updateKPICards(data);
+
+    console.log('Admin data refreshed — ' + new Date().toLocaleTimeString());
   } catch(e) {
     console.error('applyAdminData error:', e);
+  }
+}
+
+function updateKPICards(data) {
+  try {
+    // This week revenue — sum from current orders
+    var orders  = data.orders || [];
+    var monthly = data.monthly || [];
+
+    // Use direct values from Apps Script where available
+    var weekRev   = data.weekRevenue || 0;
+    var weekOrds  = data.weekOrders  || orders.length;
+    var yearlyRev = data.yearlyRev   || monthly.reduce(function(sum, m){ return sum + (m.r||0); }, 0);
+    var weeks     = data.weekCount   || monthly.length || 57;
+    var avgWeek   = weeks > 0 ? yearlyRev / weeks : 0;
+
+    // Best month
+    var bestMonth = monthly.reduce(function(best, m) {
+      return (!best || m.r > best.r) ? m : best;
+    }, null);
+
+    // Update the DOM
+    if ($('kpi-week-rev'))     $('kpi-week-rev').textContent     = '$' + weekRev.toLocaleString();
+    if ($('kpi-week-orders'))  $('kpi-week-orders').textContent  = weekOrds + ' orders this week';
+    if ($('kpi-yearly-rev'))   $('kpi-yearly-rev').textContent   = '$' + Math.round(yearlyRev).toLocaleString();
+    if ($('kpi-yearly-weeks')) $('kpi-yearly-weeks').textContent = monthly.length + ' months tracked';
+    if ($('kpi-avg-weekly'))   $('kpi-avg-weekly').textContent   = '$' + Math.round(avgWeek).toLocaleString();
+    if ($('kpi-avg-best') && bestMonth) {
+      $('kpi-avg-best').textContent = 'Best: $' + Math.round(bestMonth.r).toLocaleString() + ' (' + bestMonth.m + ')';
+    }
+  } catch(e) {
+    console.log('KPI update error:', e);
   }
 }
 
