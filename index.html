@@ -2168,29 +2168,22 @@ function refreshAdminData(){
   _adminRefreshing = true;
   showAdminLoading(true);
 
-  // Apps Script redirects — must follow redirect and handle CORS
-  fetch(APPS_SCRIPT_URL + '?type=get_dashboard', {
-    redirect: 'follow',
-    headers:  { 'Content-Type': 'application/json' }
+  // POST request — same path as orders, avoids CORS preflight issues
+  fetch(APPS_SCRIPT_URL, {
+    method:  'POST',
+    headers: {'Content-Type': 'application/json'},
+    body:    JSON.stringify({ type: 'get_dashboard' })
   })
     .then(function(res){ return res.json(); })
     .then(function(data){
-      console.log('=== DASHBOARD DATA FROM SHEET ===');
-      console.log('orders count:', data.orders ? data.orders.length : 'none');
-      console.log('customers count:', data.customers ? data.customers.length : 'none');
-      console.log('monthly count:', data.monthly ? data.monthly.length : 'none');
-      console.log('intel count:', data.intel ? data.intel.length : 'none');
-      console.log('first monthly row:', data.monthly ? JSON.stringify(data.monthly[0]) : 'none');
-      console.log('first order:', data.orders ? JSON.stringify(data.orders[0]) : 'none');
-      console.log('error?', data.error || 'none');
+      console.log('Dashboard data:', data ? Object.keys(data) : 'null');
       if(data && !data.error){
-        // Cache the result
         sessionStorage.setItem('admin_data', JSON.stringify(data));
         sessionStorage.setItem('admin_data_time', Date.now().toString());
         applyAdminData(data);
         toast('✅ Dashboard updated — ' + (data.orders?data.orders.length:0) + ' orders, ' + (data.customers?data.customers.length:0) + ' customers');
       } else {
-        toast('⚠️ Sheet returned error: ' + (data.error||'unknown'));
+        toast('⚠️ Sheet error: ' + (data&&data.error||'unknown'));
       }
     })
     .catch(function(err){
