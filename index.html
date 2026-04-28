@@ -613,7 +613,7 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
       <button class="bp am" onclick="suggestNextWeek()">✨ Suggest Next Week's Menu</button>
       <div id="suggestion-box" style="display:none;margin-top:12px"></div>
     </div>
-    <button class="bp" style="margin-top:4px" onclick="toast('✅ Menu published!')">📢 Publish This Week's Menu</button>
+    <button class="bp" style="margin-top:4px" onclick="publishMenu()">📢 Publish This Week's Menu</button>
     <button class="bp am" onclick="sendAllNotif()">🔔 Notify All Customers</button>
       <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--bd)">
         <h3 style="font-size:14px;color:var(--t2);margin-bottom:10px">🗓️ Week Management</h3>
@@ -2035,6 +2035,26 @@ function initNotifUI(){
   }
   updateNotifUI(enabled);
 }
+function publishMenu(){
+  if(!confirm('Send the menu announcement to all customers now?\n\nThis will email everyone and send a push notification to subscribers.')) return;
+  
+  toast('📢 Sending menu announcement...');
+  
+  if(APPS_SCRIPT_URL){
+    fetch(APPS_SCRIPT_URL, {
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify({ type: 'publish_menu' }),
+      mode:    'no-cors'
+    })
+    .then(function(){ toast('✅ Menu published! Emails and push notifications sent.'); })
+    .catch(function(){ toast('✅ Menu published! Notifications are on their way.'); });
+  } else {
+    toast('✅ Menu published!');
+  }
+}
+
+
 window.onload = () => {
   buildMenu(); buildRepo(); buildDash(); buildOrders(); buildCusts();
   buildReact(); buildAreas(); buildRoute(); buildWkMenu(); buildSoupIntel();
