@@ -1989,6 +1989,13 @@ async function loadFirebaseSDK(){
       s2.onload = function(){
         var app = firebase.initializeApp(FIREBASE_CONFIG);
         window.firebase_messaging = firebase.messaging();
+        // Foreground message handler — shows toast when app is open
+        window.firebase_messaging.onMessage(function(payload) {
+          console.log('Foreground message:', payload);
+          var title = (payload.notification && payload.notification.title) || 'Ladle & Spoon';
+          var body  = (payload.notification && payload.notification.body)  || '';
+          toast('🔔 ' + title + (body ? ' — ' + body : ''));
+        });
         resolve();
       };
       s2.onerror = reject;
