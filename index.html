@@ -2223,9 +2223,10 @@ function applyAdminData(data){
       buildCusts();
     }
 
-    // Update monthly chart
+    // Update monthly chart — data now includes full MONTHLY_DETAIL structure
     if(data.monthly && data.monthly.length > 0){
-      MONTHLY = data.monthly;
+      MONTHLY        = data.monthly; // simple {m, r} for bar chart
+      MONTHLY_DETAIL = data.monthly; // full detail for monthly table
       buildDash();
       buildMonthly();
     }
@@ -2304,8 +2305,10 @@ function updateKPICards(data) {
     // Use direct values from Apps Script where available
     var weekRev   = data.weekRevenue || 0;
     var weekOrds  = data.weekOrders  || orders.length;
-    var yearlyRev = data.yearlyRev   || monthly.reduce(function(sum, m){ return sum + (m.r||0); }, 0);
-    var weeks     = data.weekCount   || monthly.length || 57;
+    // Sum from monthly data directly (already updated by this point)
+    var yearlyRev = (data.monthly||[]).reduce(function(sum, m){ return sum + (m.total||m.r||0); }, 0);
+    if(!yearlyRev) yearlyRev = data.yearlyRev || 0;
+    var weeks     = (data.monthly||[]).length || data.weekCount || 57;
     var avgWeek   = weeks > 0 ? yearlyRev / weeks : 0;
 
     // Best month
