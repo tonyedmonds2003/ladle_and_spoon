@@ -1364,6 +1364,10 @@ const ROUTE = [
 
 // ════ STATE ════
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6AK_Ig7q-WISVqHXeR4Puv7dyeUlv70FrKpaUI2rX_hB0dnkytc9w22XObRKNxrRGDA/exec';
+const CLOUDINARY_CLOUD = 'drcjmvjc9';
+const CLOUDINARY_PRESET = 'ladle-soup-photos';
+const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/drcjmvjc9/image/upload';
+
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDYt3OeHN0yorpDAWu4MPvH55GnkO_yD44",
   authDomain: "ladle-and-spoon-push-notify.firebaseapp.com",
@@ -1851,35 +1855,98 @@ function buildPhotoUploader(){
   el.innerHTML=html;
 }
 function handlePhotoUpload(input){
-  var file=input.files[0];
+  var file = input.files[0];
   if(!file) return;
-  var sid=input.dataset.sid;
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var b64=e.target.result;
-    // Find and update the soup photo in ALL_SOUPS
-    var soup=ALL_SOUPS.find(function(s){return s.id===sid;});
-    if(soup){soup.photo=b64;}
-    // Save to localStorage for persistence
-    try{
-      var photos=JSON.parse(localStorage.getItem('soup_photos')||'{}');
-      photos[sid]=b64;
-      localStorage.setItem('soup_photos',JSON.stringify(photos));
-    }catch(err){}
-    toast('✅ Photo saved for '+( soup?soup.n:'this soup'));
-    buildPhotoUploader();
-    buildRepo(); // refresh recipe grid
-  };
-  reader.readAsDataURL(file);
+  var sid  = input.dataset.sid;
+  var soup = ALL_SOUPS.find(function(s){ return s.id === sid; });
+  var name = soup ? soup.n : sid;
+
+  toast('📤 Uploading photo…');
+
+  // Upload directly to Cloudinary (unsigned)
+  var formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_PRESET);
+  formData.append('folder', 'ladle-and-spoon-soups');
+  formData.append('public_id', 'soup_' + sid + '_' + Date.now());
+
+  fetch(CLOUDINARY_URL, {
+    method: 'POST',
+    body: formData
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    if(data.secure_url){
+      var url = data.secure_url;
+      // Store the Cloudinary URL (not base64) — tiny and permanent
+      if(soup) soup.photo = url;
+
+      // Save URL to localStorage as backup reference
+      try{
+        var photos = JSON.parse(localStorage.getItem('soup_photos') || '{}');
+        photos[sid] = url;
+        localStorage.setItem('soup_photos', JSON.stringify(photos));
+      }catch(e){}
+
+      // Also save to Apps Script so photo URLs persist across devices
+      if(APPS_SCRIPT_URL){
+        fetch(APPS_SCRIPT_URL, {
+          method:  'POST',
+          headers: {'Content-Type':'application/json'},
+          body:    JSON.stringify({ type:'save_photo', soupId: sid, url: url, name: name }),
+          mode:    'no-cors'
+        }).catch(function(){});
+      }
+
+      toast('✅ Photo uploaded for ' + name + '!');
+      buildPhotoUploader();
+      buildRepo();
+    } else {
+      console.error('Cloudinary error:', data);
+      toast('⚠️ Upload failed — ' + (data.error && data.error.message || 'try again'));
+    }
+  })
+  .catch(function(err){
+    console.error('Upload error:', err);
+    toast('⚠️ Upload failed — check your connection');
+  });
 }
 function loadSavedPhotos(){
+  // Load locally cached photo URLs (Cloudinary URLs or legacy base64)
   try{
-    var photos=JSON.parse(localStorage.getItem('soup_photos')||'{}');
+    var photos = JSON.parse(localStorage.getItem('soup_photos') || '{}');
     Object.keys(photos).forEach(function(sid){
-      var soup=ALL_SOUPS.find(function(s){return s.id===sid;});
-      if(soup) soup.photo=photos[sid];
+      var soup = ALL_SOUPS.find(function(s){ return s.id === sid; });
+      if(soup && photos[sid]) soup.photo = photos[sid];
     });
   }catch(e){}
+
+  // Also fetch latest photo URLs from Apps Script (cross-device sync)
+  if(APPS_SCRIPT_URL){
+    fetch(APPS_SCRIPT_URL + '?type=get_photos', { mode: 'cors' })
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+      if(data && data.photos){
+        Object.keys(data.photos).forEach(function(sid){
+          var soup = ALL_SOUPS.find(function(s){ return s.id === sid; });
+          if(soup && data.photos[sid]){
+            soup.photo = data.photos[sid];
+            // Update local cache
+            try{
+              var cached = JSON.parse(localStorage.getItem('soup_photos') || '{}');
+              cached[sid] = data.photos[sid];
+              localStorage.setItem('soup_photos', JSON.stringify(cached));
+            }catch(e){}
+          }
+        });
+        buildRepo(); // refresh recipe grid with loaded photos
+        buildPhotoUploader();
+      }
+    })
+    .catch(function(){
+      // Silently fail — local cache still works
+    });
+  }
 }
 
 function enableNotif(){
