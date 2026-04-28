@@ -2152,7 +2152,7 @@ function refreshAdminData(){
   // Check session cache first (avoid re-fetching within same session)
   var cached = sessionStorage.getItem('admin_data');
   var cachedTime = parseInt(sessionStorage.getItem('admin_data_time')||'0');
-  var AGE_LIMIT = 5 * 60 * 1000; // 5 minutes
+  var AGE_LIMIT = 2 * 60 * 1000; // 2 minutes
 
   if(cached && Date.now() - cachedTime < AGE_LIMIT){
     applyAdminData(JSON.parse(cached));
