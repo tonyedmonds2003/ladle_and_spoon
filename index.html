@@ -1902,15 +1902,41 @@ function enableNotif(){
 
 async function registerPushToken(){
   try {
-    // Dynamically load Firebase SDK (no bundler needed)
+    // Load Firebase SDK first
     if(!window.firebase_messaging){
       await loadFirebaseSDK();
     }
-    const token = await window.firebase_messaging.getToken({ vapidKey: VAPID_KEY });
+
+    // Explicitly register the service worker with the correct path
+    // This is critical for GitHub Pages which serves from a subdirectory
+    const swPath = window.location.pathname.replace(/\/[^\/]*$/, '/') + 'firebase-messaging-sw.js';
+    console.log('Registering service worker at:', swPath);
+    
+    let swReg;
+    try {
+      swReg = await navigator.serviceWorker.register(swPath);
+      console.log('Service worker registered:', swReg.scope);
+    } catch(swErr) {
+      console.log('SW registration failed, trying root path:', swErr);
+      // Fallback to root path
+      swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    }
+
+    // Wait for service worker to be ready
+    await navigator.serviceWorker.ready;
+
+    // Get token - pass the service worker registration explicitly
+    const token = await window.firebase_messaging.getToken({ 
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: swReg
+    });
+    
     if(token){
+      console.log('FCM token obtained successfully');
       localStorage.setItem('notif_enabled','1');
       localStorage.setItem('notif_token', token);
-      // Send token to Apps Script for storage
+      
+      // Save token to Apps Script (requires customer to be logged in)
       const prof = getProfile();
       if(APPS_SCRIPT_URL && prof.email){
         fetch(APPS_SCRIPT_URL, {
@@ -1925,11 +1951,21 @@ async function registerPushToken(){
         }).catch(()=>{});
       }
       updateNotifUI(true);
-      toast('🔔 Notifications enabled! You\'ll hear from us when the menu drops.');
+      toast('🔔 You\'re all set! We\'ll notify you when the menu drops.');
+    } else {
+      console.log('No token returned — permission may not be granted');
+      toast('Could not enable notifications — please check your browser settings');
     }
   } catch(err){
-    console.log('Push token error:', err);
-    toast('Could not enable notifications — try again later');
+    console.error('Push token error:', err.message || err);
+    // Give a more specific error if possible
+    if(err.message && err.message.includes('messaging/unsupported-browser')){
+      toast('Push notifications are not supported on this browser');
+    } else if(err.message && err.message.includes('messaging/permission-blocked')){
+      toast('Notifications are blocked — enable them in your phone settings');
+    } else {
+      toast('Could not enable notifications — try again later');
+    }
   }
 }
 
