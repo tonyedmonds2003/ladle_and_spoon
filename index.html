@@ -1924,7 +1924,7 @@ function loadSavedPhotos(){
 
   // Also fetch latest photo URLs from Apps Script (cross-device sync)
   if(APPS_SCRIPT_URL){
-    fetch(APPS_SCRIPT_URL + '?type=get_photos', { mode: 'cors' })
+    fetch(APPS_SCRIPT_URL + '?type=get_photos')
     .then(function(res){ return res.json(); })
     .then(function(data){
       if(data && data.photos){
@@ -2162,12 +2162,9 @@ function refreshAdminData(){
   _adminRefreshing = true;
   showAdminLoading(true);
 
-  // POST with no Content-Type header — avoids CORS preflight
-  // Apps Script accepts plain text body and parses it as JSON
-  fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    body:   JSON.stringify({ type: 'get_dashboard' })
-  })
+  // GET request — no preflight for simple requests with no custom headers
+  // Apps Script handles GET with CORS automatically
+  fetch(APPS_SCRIPT_URL + '?type=get_dashboard')
     .then(function(res){ return res.json(); })
     .then(function(data){
       console.log('Dashboard data:', data ? Object.keys(data) : 'null');
