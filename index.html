@@ -3065,14 +3065,73 @@ function sendAllNotif(){
   const ch=[sms&&'📱 SMS',email&&'✉️ Email',ig&&'📸 Instagram',fb&&'👥 Facebook'].filter(Boolean);
   toast('📤 Sent via '+ch.join(', ')+' to 120+ customers!');
 }
-function genPost(){
-  toast('✨ Generating caption…');
-  const caps=[
-    "🍜 This week's menu is LIVE! Split Pea w/ Bacon, Chicken Wonton w/ Bok Choy & Creamy Swiss Onion — plus TWO incredible salads. Order by Friday 6 PM for Monday delivery 🌿 #ladleandspoon #waterfordmi #homemadesoup",
-    "✨ New week, new soups! Chicken Wonton w/ Bok Choy is back by popular demand 🍜 + the most beautiful Goat Cheese Blueberry Salad. Order by Friday! #homemade #localfood #soupdelivery",
-    "❤️ Thank you to our amazing soup community in Waterford & beyond! New menu is live — order by Friday 6 PM. Pints $8 · Quarts $15 🥣 #ladleandspoon #eatlocalmi"
-  ];
-  setTimeout(()=>{const t=caps[Math.floor(Math.random()*caps.length)];$('ptxtarea').value=t;$('ptxtprev').textContent=t;toast('✅ Caption generated!');},1100);
+async function genPost(){
+  // Get current platform selection
+  const activePlt = document.querySelector('.pb.active');
+  const platform  = activePlt ? activePlt.querySelector('span:last-child').textContent : 'Instagram';
+
+  // Build menu summary from this week's items
+  const soups  = MENU_ITEMS.filter(i=>i.cat==='soup'  && !i.soldout).map(i=>i.n);
+  const salads = MENU_ITEMS.filter(i=>i.cat==='salad' && !i.soldout).map(i=>i.n);
+
+  if(soups.length === 0 && salads.length === 0){
+    toast('⚠️ Add some menu items first so the AI knows what to write about!');
+    return;
+  }
+
+  const menuText = [
+    soups.length  ? 'Soups: '  + soups.join(', ')  : '',
+    salads.length ? 'Salads: ' + salads.join(', ') : ''
+  ].filter(Boolean).join(' | ');
+
+  // Platform-specific tone guidance
+  const toneGuide = {
+    'Instagram': 'warm, visual, use 3-5 relevant emojis, 3-5 hashtags like #ladleandspoon #waterfordmi #homemadesoup #soupdelivery #eatlocal',
+    'Facebook':  'friendly and conversational, 1-2 emojis, no hashtags needed, slightly longer',
+    'Twitter/X': 'punchy and concise, under 240 characters, 1-2 emojis, 2-3 hashtags'
+  };
+  const tone = toneGuide[platform] || toneGuide['Instagram'];
+
+  toast('✨ Writing your caption…');
+
+  // Disable button while generating
+  const btn = document.querySelector('.bp[onclick*="genPost"]');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Writing…'; }
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model:      'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        system: 'You write social media captions for Ladle & Spoon, a homemade soup and salad delivery business in Waterford, Michigan run by a woman named Lia. Her business is warm, personal, and community-focused. Customers order by Friday 6 PM for Monday delivery. Prices: Pints $8, Quarts $15, Salads $15. Write ONLY the caption text — no explanation, no quotes, no preamble.',
+        messages: [{
+          role:    'user',
+          content: 'Write a ' + platform + ' caption announcing this week\'s menu.\n\nThis week\'s menu: ' + menuText + '\n\nTone: ' + tone + '\n\nMake it feel genuine and mouth-watering. Mention ordering by Friday 6 PM.'
+        }]
+      })
+    });
+
+    const data = await response.json();
+    const caption = data.content && data.content[0] && data.content[0].text
+      ? data.content[0].text.trim()
+      : null;
+
+    if(caption){
+      $('ptxtarea').value   = caption;
+      $('ptxtprev').textContent = caption;
+      toast('✅ Caption ready — edit it to make it yours!');
+    } else {
+      console.log('API response:', JSON.stringify(data));
+      toast('⚠️ Could not generate caption — try again');
+    }
+  } catch(err){
+    console.error('Caption generation error:', err);
+    toast('⚠️ Could not reach AI — check your connection');
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = '✨ Generate Caption with AI'; }
+  }
 }
 function setPlt(btn){document.querySelectorAll('.pb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
 function runImport(){
