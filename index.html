@@ -2175,12 +2175,22 @@ function refreshAdminData(){
   })
     .then(function(res){ return res.json(); })
     .then(function(data){
+      console.log('=== DASHBOARD DATA FROM SHEET ===');
+      console.log('orders count:', data.orders ? data.orders.length : 'none');
+      console.log('customers count:', data.customers ? data.customers.length : 'none');
+      console.log('monthly count:', data.monthly ? data.monthly.length : 'none');
+      console.log('intel count:', data.intel ? data.intel.length : 'none');
+      console.log('first monthly row:', data.monthly ? JSON.stringify(data.monthly[0]) : 'none');
+      console.log('first order:', data.orders ? JSON.stringify(data.orders[0]) : 'none');
+      console.log('error?', data.error || 'none');
       if(data && !data.error){
         // Cache the result
         sessionStorage.setItem('admin_data', JSON.stringify(data));
         sessionStorage.setItem('admin_data_time', Date.now().toString());
         applyAdminData(data);
-        toast('✅ Dashboard updated from Google Sheet');
+        toast('✅ Dashboard updated — ' + (data.orders?data.orders.length:0) + ' orders, ' + (data.customers?data.customers.length:0) + ' customers');
+      } else {
+        toast('⚠️ Sheet returned error: ' + (data.error||'unknown'));
       }
     })
     .catch(function(err){
