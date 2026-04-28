@@ -1937,20 +1937,27 @@ async function registerPushToken(){
       localStorage.setItem('notif_enabled','1');
       localStorage.setItem('notif_token', token);
       
-      // Save token to Apps Script (requires customer to be logged in)
-      const prof = getProfile();
-      if(APPS_SCRIPT_URL && prof.email){
+      // Save token to Apps Script — use email if available, device ID otherwise
+      const prof  = getProfile();
+      const ident = prof.email || ('device_' + (localStorage.getItem('device_id') || (()=>{
+        const id = Date.now().toString(36);
+        localStorage.setItem('device_id', id);
+        return id;
+      })()));
+      if(APPS_SCRIPT_URL){
         fetch(APPS_SCRIPT_URL, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({
             type:  'notification_token',
-            email: prof.email,
+            email: ident,
             token: token
           }),
           mode:'no-cors'
         }).catch(()=>{});
       }
+      // Also store token locally so testMyNotification works
+      localStorage.setItem('notif_token', token);
       updateNotifUI(true);
       toast('🔔 You\'re all set! We\'ll notify you when the menu drops.');
     } else {
