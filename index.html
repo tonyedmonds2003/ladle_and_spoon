@@ -382,6 +382,10 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
 .cs-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;}
 .cs-row.tot{font-weight:700;font-size:15px;color:var(--f);padding-top:8px;border-top:1px solid var(--bd);margin-top:5px;}
 .sub-note-box{background:var(--sgl);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--f);font-weight:600;margin-bottom:12px;}
+
+<style>
+@keyframes shimmer{0%{background-position:200%}100%{background-position:-200%}}
+</style>
 </style>
 </head>
 <body>
@@ -528,6 +532,7 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
 
 <!-- ── ADMIN ── (full admin section from previous build) -->
 <div class="view" id="v-admin">
+  <div id="admin-loading-bar" style="display:none;height:3px;background:linear-gradient(90deg,var(--f),var(--sg),var(--f));background-size:200%;animation:shimmer 1.5s infinite;position:sticky;top:0;z-index:99;border-radius:0"></div>
   <div class="atabs">
     <button class="at active" onclick="adm('dash',this)">📊 Dash</button>
     <button class="at" onclick="adm('orders',this)">📋 Orders</button>
@@ -2140,6 +2145,156 @@ function trendClass(t){return t.includes('📈')?'trend-up':t.includes('📉')?'
 function trendArrow(t){return t.includes('📈')?'📈':t.includes('📉')?'📉':'⚖️';}
 
 // ════ NAVIGATION ════
+// ════ LIVE ADMIN DATA REFRESH ════
+// Called every time Lia opens the admin panel
+// Fetches current data from Google Sheet and updates all displays
+
+var _adminRefreshing = false;
+
+function refreshAdminData(){
+  if(_adminRefreshing) return; // prevent duplicate calls
+  if(!APPS_SCRIPT_URL) return;
+
+  // Check session cache first (avoid re-fetching within same session)
+  var cached = sessionStorage.getItem('admin_data');
+  var cachedTime = parseInt(sessionStorage.getItem('admin_data_time')||'0');
+  var AGE_LIMIT = 5 * 60 * 1000; // 5 minutes
+
+  if(cached && Date.now() - cachedTime < AGE_LIMIT){
+    applyAdminData(JSON.parse(cached));
+    return;
+  }
+
+  _adminRefreshing = true;
+  showAdminLoading(true);
+
+  fetch(APPS_SCRIPT_URL + '?type=get_dashboard')
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+      if(data && !data.error){
+        // Cache the result
+        sessionStorage.setItem('admin_data', JSON.stringify(data));
+        sessionStorage.setItem('admin_data_time', Date.now().toString());
+        applyAdminData(data);
+        toast('✅ Dashboard updated from Google Sheet');
+      }
+    })
+    .catch(function(err){
+      console.log('Admin data fetch failed (using cached data):', err);
+      // Silently fall back to hardcoded data — no error shown to Lia
+    })
+    .finally(function(){
+      _adminRefreshing = false;
+      showAdminLoading(false);
+    });
+}
+
+function showAdminLoading(show){
+  var el = $('admin-loading-bar');
+  if(el) el.style.display = show ? 'block' : 'none';
+}
+
+function applyAdminData(data){
+  try {
+    // Update orders
+    if(data.orders && data.orders.length > 0){
+      ORDERS = data.orders;
+      buildOrders();
+    }
+
+    // Update customers
+    if(data.customers && data.customers.length > 0){
+      // Map Sheet columns to app format
+      CUSTS = data.customers.map(function(c){
+        var now = Date.now();
+        var days = c.lastTS ? Math.floor((now - c.lastTS) / 86400000) : 999;
+        return {
+          n:     c.n,
+          i:     c.i || (c.n||'??').split(' ').map(function(w){return w[0]||'';}).join('').substring(0,2).toUpperCase(),
+          email: c.email,
+          phone: c.phone || '',
+          addr:  c.addr  || '',
+          ltv:   c.ltv   || 0,
+          cnt:   c.cnt   || 0,
+          last:  c.last  || 'Unknown',
+          days:  days,
+          risk:  days > 21,
+          vip:   (c.ltv||0) > 500
+        };
+      });
+      buildCusts();
+    }
+
+    // Update monthly chart
+    if(data.monthly && data.monthly.length > 0){
+      MONTHLY = data.monthly;
+      buildDash();
+      buildMonthly();
+    }
+
+    // Update soup intelligence
+    if(data.intel && data.intel.length > 0){
+      SOUP_INTEL = data.intel.map(function(s){
+        return {
+          n:    s.n,
+          cat:  s.cat,
+          rev:  s.rev,
+          weeks: s.weeks,
+          avg:  s.avg,
+          last: s.last,
+          last_date: '',
+          trend: s.trend
+        };
+      });
+      // Also update ALL_SOUPS revenue from intel
+      SOUP_INTEL.forEach(function(si){
+        var soup = ALL_SOUPS.find(function(s){ return s.n.toLowerCase() === si.n.toLowerCase(); });
+        if(soup){ soup.rev = si.rev; }
+      });
+      buildSoupIntel();
+    }
+
+    // Update reactivation list
+    if(data.react && data.react.length > 0){
+      REACT = data.react;
+      buildReact();
+    }
+
+    // Update geo areas
+    if(data.areas && data.areas.length > 0){
+      AREAS = data.areas;
+      buildAreas();
+    }
+
+    // Update route
+    if(data.route && data.route.length > 0){
+      ROUTE_STOPS = data.route;
+      buildRoute();
+    }
+
+    // Update weekly menu summary
+    if(data.wkmenu && data.wkmenu.length > 0){
+      WKMENU = data.wkmenu;
+      buildWkMenu();
+    }
+
+    // Update soup photos from Sheet
+    if(data.photos){
+      Object.keys(data.photos).forEach(function(sid){
+        var soup = ALL_SOUPS.find(function(s){ return s.id === sid; });
+        if(soup && data.photos[sid]) soup.photo = data.photos[sid];
+      });
+      buildRepo();
+      buildPhotoUploader();
+    }
+
+    console.log('Admin data refreshed from Sheet — ' + new Date().toLocaleTimeString());
+  } catch(e) {
+    console.error('applyAdminData error:', e);
+  }
+}
+
+
 function sw(v, btn){
   // Block direct navigation to admin if not authenticated
   if(v === 'admin' && !sessionAuthenticated()){
@@ -2151,7 +2306,11 @@ function sw(v, btn){
   $('v-'+v).classList.add('active');
   if(btn) btn.classList.add('active');
   $('cpb').style.display = v==='admin' ? 'none' : 'flex';
-  if(v === 'admin') isAdmin = true;
+  if(v === 'admin'){
+    isAdmin = true;
+    // Fetch fresh data from Sheet when admin opens
+    refreshAdminData();
+  }
 }
 function toggleMode(){
   if(isAdmin){
