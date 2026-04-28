@@ -2,7 +2,7 @@
 //  Ladle & Spoon — Firebase Cloud Messaging Service Worker
 //  File name: firebase-messaging-sw.js
 //  Must be in the ROOT of your GitHub repo alongside index.html
-//  Version: 2
+//  Version: 3
 // ════════════════════════════════════════════════════════════════
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
@@ -22,33 +22,33 @@ const messaging = firebase.messaging();
 // Handle background notifications (app closed or not in focus)
 // Uses 'tag' to collapse duplicates — only one notification shows at a time
 messaging.onBackgroundMessage(function(payload) {
-  console.log('[SW] Background message:', payload);
+  console.log('[SW] Background message received:', JSON.stringify(payload));
 
-  const title   = (payload.notification && payload.notification.title) || 'Ladle & Spoon';
+  // Read from data payload (sent as data-only from Apps Script)
+  // Fall back to notification payload just in case
+  const title = (payload.data && payload.data.title) || 
+                (payload.notification && payload.notification.title) || 
+                'Ladle & Spoon';
+  const body  = (payload.data && payload.data.body) ||
+                (payload.notification && payload.notification.body) ||
+                "Check this week's menu!";
+  const url   = (payload.data && payload.data.url) ||
+                'https://tonyedmonds2003.github.io/ladle_and_spoon/';
+  const icon  = (payload.data && payload.data.icon) ||
+                'https://res.cloudinary.com/drcjmvjc9/image/upload/v1762996224/Ladle_and_Spoon_Logo_Clean_pylcav.png';
+
   const options = {
-    body:  (payload.notification && payload.notification.body) || "Check this week's menu!",
-    icon:  'https://res.cloudinary.com/drcjmvjc9/image/upload/v1762996224/Ladle_and_Spoon_Logo_Clean_pylcav.png',
-    badge: 'https://res.cloudinary.com/drcjmvjc9/image/upload/v1762996224/Ladle_and_Spoon_Logo_Clean_pylcav.png',
-    tag:   'ladle-spoon-notification',  // same tag = replaces any existing notification
-    renotify: false,
+    body:             body,
+    icon:             icon,
+    badge:            icon,
+    tag:              'ladle-spoon-notification',
+    renotify:         false,
     requireInteraction: false,
-    data:  { url: (payload.data && payload.data.url) ? payload.data.url : 'https://tonyedmonds2003.github.io/ladle_and_spoon/' }
+    data:             { url: url }
   };
 
-  // Check if app is currently focused — if so, skip the notification
-  // (the foreground handler in the app will handle it instead)
-  return self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    .then(function(clients) {
-      var appFocused = clients.some(function(c) {
-        return c.visibilityState === 'visible';
-      });
-      if (!appFocused) {
-        return self.registration.showNotification(title, options);
-      }
-      // App is open and focused — suppress background notification
-      // to avoid duplicate with foreground handler
-      console.log('[SW] App is focused, suppressing background notification');
-    });
+  console.log('[SW] Showing notification:', title, body, url);
+  return self.registration.showNotification(title, options);
 });
 
 // Tap notification to open the app
