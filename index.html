@@ -2361,7 +2361,7 @@ function updateKPICards(data) {
       return sum + (parseFloat(m.total)||parseFloat(m.r)||0);
     }, 0);
 
-    var weeks = data.weekCount || monthly.reduce(function(s,m){return s+(m.avg_wk>0&&m.total>0?Math.round(m.total/m.avg_wk):4);},0) || monthly.length*4 || 1;
+    var weeks = (data.weekCount > 10 ? data.weekCount : 0) || Math.round(monthly.length * 4.33) || 1;
     var avgWeek = weeks > 0 ? Math.round(yearlyRev / weeks) : 0;
 
     // Best month by total
@@ -3015,7 +3015,7 @@ function buildMonthly(){
       svg+='<text x="'+(x+chartW_bar/2)+'" y="'+(topPad+chartH+21)+'" text-anchor="middle" font-size="8" fill="#999" font-family="sans-serif">'+parts[1]+'</text>';
       // Total label on top
       if(m.total>0){
-        svg+='<text x="'+(x+chartW_bar/2)+'" y="'+(stackY-3)+'" text-anchor="middle" font-size="7" fill="#333" font-family="sans-serif">$'+(m.total/1000).toFixed(1)+'k</text>';
+        svg+='<text x="'+(x+chartW_bar/2)+'" y="'+Math.max(topPad+8,stackY-3)+'" text-anchor="middle" font-size="7" fill="#333" font-family="sans-serif">$'+(m.total/1000).toFixed(1)+'k</text>';
       }
     });
 
@@ -3044,7 +3044,7 @@ function buildOrders(){
   el.innerHTML=allOrders.map(function(o){
     var isLocal=!!o.timestamp;
     var stClass=o.status==='delivered'?'delivered':o.status==='confirmed'?'confirmed':'new';
-    var stLabel=o.status==='delivered'?'Delivered':o.status==='confirmed'?'Confirmed':'Delivered';
+    var stLabel=o.status==='delivered'?'Delivered':o.status==='confirmed'?'Confirmed':'New';
     return '<div class="oc">'
       +'<div class="ohd"><strong>'+o.n+(o.id?' · '+o.id:'')+'</strong>'
       +'<div style="display:flex;gap:6px;align-items:center">'
