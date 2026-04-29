@@ -2993,49 +2993,53 @@ function buildMonthly(){
     var maxV=0;
     cd.forEach(function(m){if((m.total||0)>maxV)maxV=m.total;});
     if(!maxV)maxV=3000;
+    // Round maxV up to next clean tick
     var tickStep=maxV>3000?1000:500;
+    maxV=Math.ceil(maxV/tickStep)*tickStep;
     var tks=[];
-    for(var tv=0;tv<=maxV+tickStep;tv+=tickStep)tks.push(tv);
-    var H=200,W=24,gap=4,lp=40,bp=32,tP=16;
+    for(var tv=tickStep;tv<=maxV;tv+=tickStep)tks.push(tv);
+    var H=200,W=24,gap=4,lp=42,bp=34,tP=12;
     var sw=lp+(W+gap)*cd.length+8;
     var svH=H+bp+tP;
     var o=[];
     o.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+sw+' '+svH+'" width="100%" style="display:block">');
-    // Grid lines
+    // Grid lines + labels
     tks.forEach(function(tv){
-      if(tv>maxV*1.05)return;
       var gy=tP+H-Math.round(tv/maxV*H);
       o.push('<line x1="'+lp+'" y1="'+gy+'" x2="'+(sw-4)+'" y2="'+gy+'" stroke="#ebebeb" stroke-width="1"/>');
-      if(tv>0){var lb=tv>=1000?'$'+(tv/1000).toFixed(0)+'k':'$'+tv;o.push('<text x="'+(lp-4)+'" y="'+(gy+4)+'" text-anchor="end" font-size="9" fill="#ccc">'+lb+'</text>');}
+      var lb=tv>=1000?'$'+(tv/1000).toFixed(0)+'k':'$'+tv;
+      o.push('<text x="'+(lp-5)+'" y="'+(gy+4)+'" text-anchor="end" font-size="9" fill="#bbb">'+lb+'</text>');
     });
-    // Axis line
-    o.push('<line x1="'+lp+'" y1="'+(tP+H)+'" x2="'+(sw-4)+'" y2="'+(tP+H)+'" stroke="#ddd" stroke-width="1.5"/>');
-    // Bars - height based on total, components are proportional slices
+    // Bottom axis
+    o.push('<line x1="'+lp+'" y1="'+(tP+H)+'" x2="'+(sw-4)+'" y2="'+(tP+H)+'" stroke="#ccc" stroke-width="1"/>');
+    // Bars
     cd.forEach(function(m,i){
       if(!m.total)return;
       var bx=lp+i*(W+gap);
       var tot=m.total;
       var totalBarH=Math.round(tot/maxV*H);
-      // Proportional component heights that sum to totalBarH
-      var food=Math.max(1,(m.soup||0)+(m.salad||0)+(m.bakery||0)+(m.misc||0));
-      var del=m.delivery||0;
-      var delH=Math.round(del/tot*totalBarH);
-      var remH=totalBarH-delH;
-      var sh=Math.round((m.soup||0)/food*remH);
-      var lh=Math.round((m.salad||0)/food*remH);
-      var bkh=Math.round(((m.bakery||0)+(m.misc||0))/food*remH);
-      var soupH=remH-lh-bkh; // remainder goes to soup to avoid rounding gaps
+      if(totalBarH<1)return;
+      var del=Math.max(0,m.delivery||0);
+      var food=Math.max(0,tot-del);
+      var salad=Math.max(0,m.salad||0);
+      var bakery=Math.max(0,(m.bakery||0)+(m.misc||0));
+      var soup=Math.max(0,food-salad-bakery);
+      var delH =del >0?Math.round(del /tot*totalBarH):0;
+      var salH =salad>0?Math.round(salad/tot*totalBarH):0;
+      var bakH =bakery>0?Math.round(bakery/tot*totalBarH):0;
+      var soupH=totalBarH-delH-salH-bakH;
       var by=tP+H,sy=by;
       if(soupH>0){sy-=soupH;o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+soupH+'" fill="#1B3D1C" rx="2"/>');}  
-      if(lh>0)   {sy-=lh;   o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+lh+'"    fill="#7FAF6E" rx="2"/>');}  
-      if(bkh>0)  {sy-=bkh;  o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+bkh+'"   fill="#D4943A" rx="2"/>');}  
+      if(salH>0) {sy-=salH; o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+salH+'"  fill="#7FAF6E" rx="2"/>');}  
+      if(bakH>0) {sy-=bakH; o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+bakH+'"  fill="#D4943A" rx="2"/>');}  
       if(delH>0) {sy-=delH; o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+delH+'"  fill="#1d4ed8" rx="2"/>');}  
-      // Value label
+      // Value label inside bar if tall, above if short
       var lb2='$'+(tot/1000).toFixed(1)+'k';
-      var ly,lc;
-      if(totalBarH>=20){ly=sy+13;lc='#fff';}else{ly=Math.max(tP+10,sy-3);lc='#444';}
+      var topY=sy;
+      var ly=totalBarH>=20?topY+13:Math.max(tP+10,topY-3);
+      var lc=totalBarH>=20?'#fff':'#333';
       o.push('<text x="'+(bx+W/2)+'" y="'+ly+'" text-anchor="middle" font-size="8.5" font-weight="bold" fill="'+lc+'">'+lb2+'</text>');
-      // X labels
+      // Month labels
       var pts=(m.m||'').split("'");
       var xc=bx+W/2;
       o.push('<text x="'+xc+'" y="'+(tP+H+13)+'" text-anchor="middle" font-size="8" fill="#999">'+((pts[0]||'').trim())+'</text>');
