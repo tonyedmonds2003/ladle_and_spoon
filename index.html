@@ -2174,7 +2174,9 @@ function refreshAdminData(){
         sessionStorage.setItem('admin_data', JSON.stringify(data));
         sessionStorage.setItem('admin_data_time', Date.now().toString());
         applyAdminData(data);
-        toast('✅ Dashboard updated — ' + (data.orders?data.orders.length:0) + ' orders, ' + (data.customers?data.customers.length:0) + ' customers');
+        var mo = data.monthly || [];
+        var rev = mo.reduce(function(s,m){ return s+(parseFloat(m.total)||parseFloat(m.r)||0); },0);
+        toast('✅ Live: ' + mo.length + ' months, $' + Math.round(rev).toLocaleString() + ' total, week=$' + (data.weekRevenue||0));
       } else {
         toast('⚠️ Sheet error: ' + (data&&data.error||'unknown'));
       }
