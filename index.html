@@ -782,7 +782,7 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
       <div class="kc"><div class="kl">Total Tracked</div><div class="kv" id="mo-total-val">$28,859</div><div class="ks" id="mo-total-sub">14 months · 57 weeks</div></div>
       <div class="kc"><div class="kl">Del. Fees Collected</div><div class="kv" id="mo-del-val">$1,110</div><div class="ks" id="mo-del-sub">Since Jan 2026 · $5/order</div></div>
     </div>
-    <div class="ccrd">
+    <div class="ccrd" style="position:relative;z-index:1">
       <h3>Month-by-Month Breakdown</h3>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -804,7 +804,7 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
         </table>
       </div>
     </div>
-    <div class="ccrd"><h3>Revenue Chart</h3>
+    <div class="ccrd" style="overflow:visible;margin-top:16px"><h3>Revenue Chart</h3>
       <div style="display:flex;gap:12px;font-size:10px;margin-bottom:8px;flex-wrap:wrap">
         <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--f);display:inline-block;border-radius:2px"></span>Soup</span>
         <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--sg);display:inline-block;border-radius:2px"></span>Salad</span>
@@ -2257,7 +2257,7 @@ function applyAdminData(data){
           cat:  s.cat,
           rev:  s.rev,
           weeks: s.weeks,
-          avg:  s.avg,
+          avg:  Math.round(s.avg||0),
           last: s.last,
           last_date: '',
           trend: s.trend
@@ -2361,7 +2361,7 @@ function updateKPICards(data) {
       return sum + (parseFloat(m.total)||parseFloat(m.r)||0);
     }, 0);
 
-    var weeks   = monthly.length || 57;
+    var weeks = data.weekCount || monthly.reduce(function(s,m){return s+(m.avg_wk>0&&m.total>0?Math.round(m.total/m.avg_wk):4);},0) || monthly.length*4 || 1;
     var avgWeek = weeks > 0 ? Math.round(yearlyRev / weeks) : 0;
 
     // Best month by total
@@ -3043,8 +3043,8 @@ function buildOrders(){
   if(allOrders.length===0){el.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3)">No orders yet this week</div>';return;}
   el.innerHTML=allOrders.map(function(o){
     var isLocal=!!o.timestamp;
-    var stClass=o.status==='new'?'new':o.status==='confirmed'?'confirmed':'delivered';
-    var stLabel=o.status==='new'?'New':o.status==='confirmed'?'Regular':'Delivered';
+    var stClass=o.status==='delivered'?'delivered':o.status==='confirmed'?'confirmed':'new';
+    var stLabel=o.status==='delivered'?'Delivered':o.status==='confirmed'?'Confirmed':'Delivered';
     return '<div class="oc">'
       +'<div class="ohd"><strong>'+o.n+(o.id?' · '+o.id:'')+'</strong>'
       +'<div style="display:flex;gap:6px;align-items:center">'
@@ -3224,7 +3224,7 @@ function buildSoupIntel(){
       html+='<div class="si-bar-w"><div class="si-bar-f" style="width:'+barW+'%;background:'+barColor+'"></div></div>';
       html+='</div>';
       html+='<div class="si-rev">';
-      html+='<strong>$'+s.avg+'/wk</strong>';
+      html+='<strong>$'+Math.round(s.avg||0)+'/wk</strong>';
       html+='<span style="font-size:10px;color:var(--t3)">$'+s.rev.toLocaleString()+' total</span>';
       html+='<span style="font-size:10px;color:var(--t3)">Last: $'+s.last+'</span>';
       html+='<button data-nm="'+s.n.replace(/"/g,'&quot;')+'" onclick="retireSoup(this.dataset.nm)" style="margin-top:4px;font-size:9px;padding:2px 7px;background:#fee2e2;color:#991b1b;border:none;border-radius:5px;cursor:pointer">🗄 Retire</button>';
@@ -3446,8 +3446,9 @@ function buildRoute(){
   });
   if($('route-stops')) $('route-stops').textContent=stops;
   if($('route-all-hd')) $('route-all-hd').textContent='All '+stops+' Stops';
-  if($('route-cash'))  $('route-cash').textContent='$'+(cashAmt||'?');
-  if($('route-venmo')) $('route-venmo').textContent='$'+(venmoAmt||'?');
+  if($('route-cash'))  $('route-cash').textContent='$'+(cashAmt||0);
+  if($('route-venmo')) $('route-venmo').textContent='$'+(venmoAmt||0);
+  if($('route-del'))   $('route-del').textContent='$'+(stops*5);
   _rt.innerHTML=ROUTE.map(s=>`
   <div class="rstop">
     <div class="sn ${s.lbl||''}">${s.num}</div>
