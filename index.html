@@ -1687,7 +1687,7 @@ function submitOrder(){
     localStorage.setItem('submitted_orders', JSON.stringify(orders));
   }catch(e){}
 
-  cart = []; appliedCoupon = ''; updC();
+  cart = []; appliedCoupon = ''; updCart();
   closeOv('ov-cart');
   showOrderConfirmation(orderData);
 
