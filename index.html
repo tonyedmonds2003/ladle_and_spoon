@@ -748,10 +748,10 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
 
     <!-- Route Summary Strip -->
     <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
-      <div class="kc" style="flex-shrink:0;min-width:80px"><div class="kl">Stops</div><div class="kv" style="font-size:20px">22</div></div>
-      <div class="kc" style="flex-shrink:0;min-width:80px"><div class="kl">Cash</div><div class="kv" style="font-size:20px">$318</div></div>
-      <div class="kc" style="flex-shrink:0;min-width:80px"><div class="kl">Venmo</div><div class="kv" style="font-size:20px">$396</div></div>
-      <div class="kc" style="flex-shrink:0;min-width:80px"><div class="kl">Del. Fees</div><div class="kv" style="font-size:20px">$110</div></div>
+      <div class="kc" style="flex-shrink:0;min-width:80px"><div class="kl">Stops</div><div class="kv" style="font-size:20px" id="route-stops">22</div></div>
+      <div class="kc" style="flex-shrink:0;min-width:80px"><div class="kl">Cash</div><div class="kv" style="font-size:20px" id="route-cash">$318</div></div>
+      <div class="kc" style="flex-shrink:0;min-width:80px"><div class="kl">Venmo</div><div class="kv" style="font-size:20px" id="route-venmo">$396</div></div>
+      <div class="kc" style="flex-shrink:0;min-width:80px"><div class="kl">Del. Fees</div><div class="kv" style="font-size:20px" id="route-del">$110</div></div>
     </div>
 
     <!-- Google Maps button at top -->
@@ -760,9 +760,9 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
        style="display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:12px;padding:12px;background:var(--f);color:#fff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700;">
       🗺️ Open Full Route in Google Maps
     </a>
-    <!-- All 22 Stops -->
+    <!-- <span id="route-all-hd">All 22 Stops</span> -->
     <div class="ccrd">
-      <h3>All 22 Stops</h3>
+      <h3><span id="route-all-hd">All 22 Stops</span></h3>
       <div id="rtstops" style="display:none"></div>
       <div id="route-strip" style="display:flex;flex-direction:column;gap:3px"></div>
     </div>
@@ -2926,11 +2926,14 @@ function buildMonthly(){
     var chartData=MONTHLY_DETAIL.slice().reverse(); // chronological order
     var maxVal=Math.max.apply(null,chartData.map(function(m){return m.total||0;}));
     if(!maxVal || maxVal <= 0) maxVal = 3000;
-    var step = maxVal > 2500 ? 500 : 250;
-    var yStart = 0;
-    var range = maxVal;
+    // Use 70% of min value as baseline so differences are more visible
+    var validTotals = chartData.filter(function(m){return m.total>0;}).map(function(m){return m.total;});
+    var minVal = validTotals.length > 0 ? Math.min.apply(null, validTotals) : 0;
+    var yStart = Math.floor(minVal * 0.7 / 500) * 500; // round to nearest 500
+    var range = maxVal - yStart || 1;
+    var step = (maxVal - yStart) > 2000 ? 500 : 250;
     var yTicks = [];
-    for(var t = 0; t <= maxVal + step; t += step) yTicks.push(t);
+    for(var t = yStart; t <= maxVal + step; t += step) yTicks.push(t);
     var chartH=180; var chartW_bar=22; var gap=4;
     var leftPad=38; var bottomPad=36; var topPad=10;
     var totalW=leftPad+(chartW_bar+gap)*chartData.length+8;
@@ -2941,7 +2944,7 @@ function buildMonthly(){
     // Y-axis grid lines and labels
     yTicks.forEach(function(t){
       if(t>maxVal+200) return;
-      var y=topPad+chartH-(t/range*chartH);
+      var y=topPad+chartH-((t-yStart)/range*chartH);
       svg+='<line x1="'+leftPad+'" y1="'+y+'" x2="'+(totalW-4)+'" y2="'+y+'" stroke="#ddd" stroke-width="1"/>';
       svg+='<text x="'+(leftPad-4)+'" y="'+(y+4)+'" text-anchor="end" font-size="8" fill="#999" font-family="sans-serif">$'+
         (t>=1000?(t/1000).toFixed(1)+'k':t)+'</text>';
@@ -2950,10 +2953,10 @@ function buildMonthly(){
     // Bars
     chartData.forEach(function(m,i){
       var x=leftPad+i*(chartW_bar+gap);
-      var soupH =m.total>0?Math.round(m.soup  /range*chartH):0;
-      var saladH=m.total>0?Math.round(m.salad /range*chartH):0;
-      var bakH  =m.total>0?Math.round((m.bakery+m.misc)/range*chartH):0;
-      var delH  =m.total>0?Math.round(m.delivery/range*chartH):0;
+      var soupH =m.total>0?Math.round(m.soup  /maxVal*chartH):0;
+      var saladH=m.total>0?Math.round(m.salad /maxVal*chartH):0;
+      var bakH  =m.total>0?Math.round((m.bakery+m.misc)/maxVal*chartH):0;
+      var delH  =m.total>0?Math.round(m.delivery/maxVal*chartH):0;
       var baseY =topPad+chartH;
       // Stack from bottom: soup (darkest), salad, bakery, delivery
       var stackY=baseY;
@@ -3386,7 +3389,17 @@ function buildAreas(){
       <div class="ap"><strong>${a.del}</strong><span>drops</span></div>
     </div>`).join('');})();
 }
-function buildRoute(){var _rt=$('rtstops');if(!_rt)return;_rt.innerHTML=ROUTE.map(s=>`
+function buildRoute(){
+  var _rt=$('rtstops');if(!_rt)return;
+  // Update route summary stats
+  var stops=ROUTE.filter(function(s){return !s.lbl;}).length;
+  var cashAmt=ROUTE.filter(function(s){return s.pay==='cash';}).length * 15; // estimate
+  var venmoAmt=ROUTE.filter(function(s){return s.pay==='venmo';}).length * 15;
+  if($('route-stops')) $('route-stops').textContent=stops;
+  if($('route-all-hd')) $('route-all-hd').textContent='All '+stops+' Stops';
+  if($('route-cash'))  $('route-cash').textContent='$'+(cashAmt||'?');
+  if($('route-venmo')) $('route-venmo').textContent='$'+(venmoAmt||'?');
+  _rt.innerHTML=ROUTE.map(s=>`
   <div class="rstop">
     <div class="sn ${s.lbl||''}">${s.num}</div>
     <div class="sinf">
