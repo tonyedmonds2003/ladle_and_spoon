@@ -811,7 +811,7 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
         <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--am);display:inline-block;border-radius:2px"></span>Bakery</span>
         <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#0066cc;display:inline-block;border-radius:2px"></span>Delivery</span>
       </div>
-      <div class="bch" id="rch-monthly" style="height:100px"></div></div>
+      <div class="bch" id="rch-monthly" style="height:auto;min-height:300px;overflow:visible"></div></div>
   </div>
 
   
@@ -2373,8 +2373,8 @@ function updateKPICards(data) {
         // Payment split from live orders
     var venmoOrds = orders.filter(function(o){ return o.pay==='venmo'; });
     var cashOrds  = orders.filter(function(o){ return o.pay==='cash';  });
-    var venmoAmt  = venmoOrds.reduce(function(s,o){ return s+(parseInt((o.tot||'0').replace(/[^0-9]/g,''))||0); }, 0);
-    var cashAmt   = cashOrds.reduce(function(s,o){  return s+(parseInt((o.tot||'0').replace(/[^0-9]/g,''))||0); }, 0);
+    var venmoAmt  = venmoOrds.reduce(function(s,o){ return s+(parseInt((o.tot||'0').replace(/[^0-9]/g,''))||0)+5; }, 0);
+    var cashAmt   = cashOrds.reduce(function(s,o){  return s+(parseInt((o.tot||'0').replace(/[^0-9]/g,''))||0)+5; }, 0);
     if($('ps-venmo-cnt')) $('ps-venmo-cnt').textContent = venmoOrds.length;
     if($('ps-cash-cnt'))  $('ps-cash-cnt').textContent  = cashOrds.length;
     if($('ps-venmo-amt')) $('ps-venmo-amt').textContent = '$'+venmoAmt;
@@ -2978,8 +2978,8 @@ function buildMonthly(){
     var step=(maxVal-yStart)>2000?500:250;
     var yTicks=[];
     for(var t=yStart;t<=maxVal+step;t+=step) yTicks.push(t);
-    var chartH=180; var chartW_bar=22; var gap=4;
-    var leftPad=38; var bottomPad=36; var topPad=10;
+    var chartH=155; var chartW_bar=22; var gap=4;
+    var leftPad=38; var bottomPad=36; var topPad=32;
     var totalW=leftPad+(chartW_bar+gap)*chartData.length+8;
     var totalH=chartH+bottomPad+topPad;
 
