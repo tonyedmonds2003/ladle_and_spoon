@@ -2216,6 +2216,21 @@ window.onload = () => {
   // Clear admin data cache on every fresh page load
   sessionStorage.removeItem('admin_data');
   sessionStorage.removeItem('admin_data_time');
+  // Fetch live menu from Sheet on load for all users
+  fetch(APPS_SCRIPT_URL + '?type=get_dashboard')
+    .then(function(r){return r.json();})
+    .catch(function(){return null;})
+    .then(function(d){
+      if(d && d.wkmenu && d.wkmenu.length > 0){
+        MENU_ITEMS = d.wkmenu.map(function(w,i){
+          var isSal=(w.em||'').includes('\ud83e\udd57')||/salad/i.test(w.n||'');
+          return {id:'m'+(i+1),cat:isSal?'salad':'soup',em:w.em||(isSal?'\ud83e\udd57':'\ud83e\udd63'),
+            n:w.n||'',desc:w.desc||'',tags:[],soldout:false,al:[],soupId:w.soupId||'',
+            sz:isSal?[{l:'Salad',o:'reg',p:15}]:[{l:'Pint',o:'16oz',p:8},{l:'Quart',o:'32oz',p:15}]};
+        });
+        buildMenu();
+      }
+    });
   buildMenu(); buildRepo(); buildDash(); buildOrders(); buildCusts();
   buildReact(); buildAreas(); buildRoute(); buildWkMenu(); buildSoupIntel();
   buildPlans(); buildRatings(); buildSubAdmin(); buildMonthly(); countdown(); buildRouteStrip(); loadFeaturedSelects(); loadSavedPhotos();
