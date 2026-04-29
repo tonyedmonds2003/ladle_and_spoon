@@ -2282,12 +2282,20 @@ function applyAdminData(data){
       buildAreas();
     }
 
-    // Update route
+    // Update route from live Sheet orders
     if(data.route && data.route.length > 0){
       ROUTE_STOPS = data.route;
-      ROUTE = data.route; // buildRoute() reads ROUTE
-      buildRoute();
+      ROUTE = data.route;
+    } else if(data.orders && data.orders.length > 0){
+      // Build route from orders if no route data
+      ROUTE = [{lbl:'s',num:'🏠',n:"Lia's Kitchen",a:'1247 Bielby St, Waterford',ord:'',note:'',pay:''}];
+      data.orders.forEach(function(o,i){
+        ROUTE.push({num:String(i+1),n:o.n,a:o.addr||'Waterford',ord:o.it,note:o.note||'',pay:o.pay||''});
+      });
+      ROUTE.push({lbl:'e',num:'🏠',n:'Return Home',a:'1247 Bielby St, Waterford',ord:'',note:'',pay:''});
+      ROUTE_STOPS = ROUTE;
     }
+    buildRoute();
 
     // Update weekly menu summary
     if(data.wkmenu && data.wkmenu.length > 0){
@@ -2305,7 +2313,20 @@ function applyAdminData(data){
       buildPhotoUploader();
     }
 
-    // Update KPI dashboard cards
+    // Update KPI dashboard cards - direct update as safety net
+    try {
+      if(data.weekRevenue !== undefined && $('kpi-week-rev')) {
+        $('kpi-week-rev').textContent = '$' + Math.round(data.weekRevenue).toLocaleString();
+        $('kpi-week-orders').textContent = (data.weekOrders||0) + ' orders this week';
+      }
+      var yr = (data.monthly||[]).reduce(function(s,m){return s+(parseFloat(m.total)||0);},0);
+      if(yr > 0 && $('kpi-yearly-rev')) {
+        $('kpi-yearly-rev').textContent = '$' + Math.round(yr).toLocaleString();
+        $('kpi-yearly-weeks').textContent = (data.monthly||[]).length + ' months tracked';
+        var avg = yr / ((data.monthly||[]).length || 1);
+        $('kpi-avg-weekly').textContent = '$' + Math.round(avg).toLocaleString();
+      }
+    } catch(e2) { console.log('KPI direct update error:', e2); }
     updateKPICards(data);
 
     console.log('Admin data refreshed — ' + new Date().toLocaleTimeString());
@@ -2903,13 +2924,13 @@ function buildMonthly(){
   var rc=$('rch-monthly');
   if(rc){
     var chartData=MONTHLY_DETAIL.slice().reverse(); // chronological order
-    var maxVal=Math.max.apply(null,chartData.map(function(m){return m.total;}));
-    // Dynamic y-axis based on data range
-    var minVal = Math.min.apply(null, chartData.filter(function(m){return m.total>0;}).map(function(m){return m.total;}));
+    var maxVal=Math.max.apply(null,chartData.map(function(m){return m.total||0;}));
+    if(!maxVal || maxVal <= 0) maxVal = 3000;
     var step = maxVal > 2500 ? 500 : 250;
-    var yStart = Math.floor((minVal * 0.9) / step) * step;
+    var yStart = 0;
+    var range = maxVal;
     var yTicks = [];
-    for(var t = yStart; t <= maxVal + step; t += step) yTicks.push(t);
+    for(var t = 0; t <= maxVal + step; t += step) yTicks.push(t);
     var chartH=180; var chartW_bar=22; var gap=4;
     var leftPad=38; var bottomPad=36; var topPad=10;
     var totalW=leftPad+(chartW_bar+gap)*chartData.length+8;
@@ -2920,7 +2941,7 @@ function buildMonthly(){
     // Y-axis grid lines and labels
     yTicks.forEach(function(t){
       if(t>maxVal+200) return;
-      var y=topPad+chartH-((t-yStart)/range*chartH);
+      var y=topPad+chartH-(t/range*chartH);
       svg+='<line x1="'+leftPad+'" y1="'+y+'" x2="'+(totalW-4)+'" y2="'+y+'" stroke="#ddd" stroke-width="1"/>';
       svg+='<text x="'+(leftPad-4)+'" y="'+(y+4)+'" text-anchor="end" font-size="8" fill="#999" font-family="sans-serif">$'+
         (t>=1000?(t/1000).toFixed(1)+'k':t)+'</text>';
@@ -2929,7 +2950,7 @@ function buildMonthly(){
     // Bars
     chartData.forEach(function(m,i){
       var x=leftPad+i*(chartW_bar+gap);
-      var range=maxVal-yStart||1; var soupH =m.total>0?Math.round(m.soup  /range*chartH):0;
+      var soupH =m.total>0?Math.round(m.soup  /range*chartH):0;
       var saladH=m.total>0?Math.round(m.salad /range*chartH):0;
       var bakH  =m.total>0?Math.round((m.bakery+m.misc)/range*chartH):0;
       var delH  =m.total>0?Math.round(m.delivery/range*chartH):0;
@@ -2987,7 +3008,7 @@ function buildOrders(){
       +'<div class="oitm">'+(o.it||o.items||'')+'</div>'
       +'<div class="oft">'
       +'<span class="oad">📍 '+(o.addr||'')+'</span>'
-      +'<span class="otl">$'+(o.tot||o.total||'?')+'</span>'
+      +'<span class="otl">'+(o.tot||o.total||'?')+'</span>'
       +'</div>'
       +(o.notes?'<div style="font-size:11px;color:var(--t3);margin-top:4px;font-style:italic">💬 '+o.notes+'</div>':'')
       +'</div>';
