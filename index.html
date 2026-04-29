@@ -428,6 +428,7 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
   <div style="font-size:9px;color:#2E6B30;letter-spacing:2px;text-transform:uppercase;font-weight:700;opacity:.85">Homemade Soups &amp; Salads</div>
   <div class="hdr-r">
     <button class="mp" id="mpb" onclick="toggleMode()">⚙️ Admin</button>
+    <button class="cp" id="pfb" onclick="showProfile()" style="background:var(--sgl);color:var(--f);border:none;border-radius:20px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer" title="My Profile">👤</button>
     <button class="cp" id="cpb" onclick="showCart()">🛒 <span id="cc">0</span></button>
   </div>
 </header>
@@ -1633,8 +1634,21 @@ function submitOrder(total){
   const notes  = ($('ord-notes')||{value:''}).value;
   const isNew  = ($('ord-new') ||{value:'returning'}).value === 'new';
 
-  if(!name||!email||!phone||!addr){
-    toast('⚠️ Please fill in all required fields'); return;
+  if(!name){toast('⚠️ Please enter your name'); $('ord-name').focus(); return;}
+  if(!email||!email.includes('@')){toast('⚠️ Please enter a valid email'); $('ord-email').focus(); return;}
+  if(!phone||phone.replace(/\D/g,'').length<7){toast('⚠️ Please enter a valid phone number'); $('ord-phone').focus(); return;}
+  // Require a real delivery address - must have a number and street name
+  if(!addr){
+    toast('⚠️ Delivery address is required for your route');
+    var el=$('ord-addr'); if(el){el.focus();el.style.borderColor='#e53e3e';}
+    return;
+  }
+  var hasNumber=/\d/.test(addr);
+  var hasStreet=addr.trim().split(' ').length>=2;
+  if(!hasNumber||!hasStreet){
+    toast('⚠️ Please enter your full street address (e.g. 1247 Bielby St)');
+    var el2=$('ord-addr'); if(el2){el2.focus();el2.style.borderColor='#e53e3e';}
+    return;
   }
   saveProfile({name,email,phone,addr});
 
@@ -1708,6 +1722,65 @@ function showOrderConfirmation(o){
 function getProfile(){
   try{return JSON.parse(localStorage.getItem('customer_profile')||'{}');}catch(e){return {};}
 }
+function switchAddr(type){
+  var prof=getProfile();
+  var addrEl=$('ord-addr');
+  var btnHome=$('addr-btn-home'), btnAlt=$('addr-btn-alt');
+  if(type==='home'){
+    if(addrEl) addrEl.value=prof.addr||'';
+    if(btnHome){btnHome.style.background='var(--f)';btnHome.style.color='#fff';btnHome.style.borderColor='var(--f)';}
+    if(btnAlt) {btnAlt.style.background='#fff';btnAlt.style.color='#666';btnAlt.style.borderColor='#e5e7eb';}
+  } else {
+    if(addrEl) addrEl.value=prof.addr2||'';
+    if(btnAlt) {btnAlt.style.background='var(--f)';btnAlt.style.color='#fff';btnAlt.style.borderColor='var(--f)';}
+    if(btnHome){btnHome.style.background='#fff';btnHome.style.color='#666';btnHome.style.borderColor='#e5e7eb';}
+  }
+}
+function showProfile(){
+  var prof=getProfile();
+  if($('pf-name'))  $('pf-name').value  = prof.name  || '';
+  if($('pf-email')) $('pf-email').value = prof.email || '';
+  if($('pf-phone')) $('pf-phone').value = prof.phone || '';
+  if($('pf-addr'))  $('pf-addr').value  = prof.addr  || '';
+  if($('pf-addr2')) $('pf-addr2').value = prof.addr2 || '';
+  if($('pf-pay'))   $('pf-pay').value   = prof.pay   || 'venmo';
+  if($('pf-notes')) $('pf-notes').value = prof.notes || '';
+  var m=$('profile-modal'); if(m){m.style.display='flex'; document.body.style.overflow='hidden';}
+}
+function hideProfile(){
+  var m=$('profile-modal'); if(m){m.style.display='none'; document.body.style.overflow='';}
+}
+function saveProfileForm(){
+  var name  = ($('pf-name') ||{value:''}).value.trim();
+  var email = ($('pf-email')||{value:''}).value.trim();
+  var phone = ($('pf-phone')||{value:''}).value.trim();
+  var addr  = ($('pf-addr') ||{value:''}).value.trim();
+  var addr2 = ($('pf-addr2')||{value:''}).value.trim();
+  var pay   = ($('pf-pay')  ||{value:'venmo'}).value;
+  var notes = ($('pf-notes')||{value:''}).value.trim();
+  if(!name){toast('Please enter your name'); $('pf-name').focus(); return;}
+  if(!email||!email.includes('@')){toast('Please enter a valid email'); $('pf-email').focus(); return;}
+  if(!addr){$('pf-addr').style.borderColor='#e53e3e'; $('pf-addr').focus(); toast('⚠️ Home address is required'); return;}
+  var hasNum=/\d/.test(addr), hasStreet=addr.trim().split(' ').length>=2;
+  if(!hasNum||!hasStreet){$('pf-addr').style.borderColor='#e53e3e'; $('pf-addr').focus(); toast('⚠️ Enter full street address: e.g. 1247 Bielby St, Waterford'); return;}
+  if(addr2){var h2=/\d/.test(addr2),s2=addr2.trim().split(' ').length>=2;if(!h2||!s2){$('pf-addr2').style.borderColor='#e53e3e';toast('⚠️ Alternate address needs a street number and name');return;}}
+  saveProfile({name,email,phone,addr,addr2,pay,notes});
+  hideProfile();
+  toast('✅ Profile saved! Your info will pre-fill every order.');
+  // Update profile button to show name
+  var btn=$('pfb'); if(btn) btn.textContent='👤 '+name.split(' ')[0];
+}
+function clearProfile(){
+  if(!confirm('Clear your saved profile?')) return;
+  try{localStorage.removeItem('customer_profile');}catch(e){}
+  ['pf-name','pf-email','pf-phone','pf-addr','pf-addr2','pf-notes'].forEach(function(id){var el=$(id);if(el)el.value='';});
+  toast('Profile cleared');
+  var btn=$('pfb'); if(btn) btn.textContent='👤';
+}
+function getProfile(){
+  try{return JSON.parse(localStorage.getItem('customer_profile')||'{}');}catch(e){return {};}
+}
+
 function saveProfile(p){
   try{localStorage.setItem('customer_profile',JSON.stringify(p));}catch(e){}
 }
@@ -2131,6 +2204,12 @@ function openRouteInMaps(){
 }
 window.onload = () => {
   console.log("APP VERSION: 2026-04-28-v12");
+  // Show first name on profile button if profile exists
+  var _prof=getProfile();
+  if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
+  // Prompt new visitors to set up profile
+  if(!_prof.addr){setTimeout(function(){toast("👤 Tap the profile button to save your address for faster ordering!");},3000);}
+
   // Clear admin data cache on every fresh page load
   sessionStorage.removeItem('admin_data');
   sessionStorage.removeItem('admin_data_time');
@@ -2682,7 +2761,8 @@ function showCart(){
           <input id="ord-name" class="fi-sel" placeholder="Full name *" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
           <input id="ord-email" class="fi-sel" placeholder="Email address *" type="email" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
           <input id="ord-phone" class="fi-sel" placeholder="Phone number *" type="tel" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
-          <input id="ord-addr" class="fi-sel" placeholder="Delivery address *" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
+          <div id="addr-toggle" style="display:none;margin-bottom:6px;display:flex;gap:8px"><button type="button" id="addr-btn-home" onclick="switchAddr('home')" style="flex:1;padding:7px;border-radius:8px;border:2px solid var(--f);background:var(--f);color:#fff;font-size:11px;font-weight:700;cursor:pointer">🏠 Home</button><button type="button" id="addr-btn-alt" onclick="switchAddr('alt')" style="flex:1;padding:7px;border-radius:8px;border:2px solid #e5e7eb;background:#fff;color:#666;font-size:11px;font-weight:700;cursor:pointer">🏢 Alternate</button></div>
+          <input id="ord-addr" class="fi-sel" placeholder="Street address (e.g. 1247 Bielby St, Waterford) *" oninput="this.style.borderColor=''" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
           <select id="ord-new" class="fi-sel" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%;background:#fff">
             <option value="returning">Nope! I am back for more! 😋</option>
             <option value="new">Yes I am New and hungry! 🎉</option>
@@ -2706,6 +2786,11 @@ function showCart(){
   if(prof.email&&$('ord-email'))$('ord-email').value=prof.email;
   if(prof.phone&&$('ord-phone'))$('ord-phone').value=prof.phone;
   if(prof.addr&&$('ord-addr'))$('ord-addr').value=prof.addr;
+  if(prof.pay&&$('ord-pay'))$('ord-pay').value=prof.pay;
+  if(prof.notes&&$('ord-notes'))$('ord-notes').value=prof.notes;
+  // Show address toggle if alt address exists
+  var tog=$('addr-toggle');
+  if(tog) tog.style.display = prof.addr2 ? 'flex' : 'none';
 }
 
 function rmItem(i){cart.splice(i,1);updCart();showCart();}
@@ -3661,5 +3746,52 @@ function markCouponUsed() {
 
 </body>
 </html  </div>
+
+<div id="profile-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:flex-end;justify-content:center">
+  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:600px;padding:24px 20px 40px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-size:20px;font-weight:800;color:var(--f);margin:0">👤 My Profile</h2>
+      <button onclick="hideProfile()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--t3);margin-bottom:16px">Your info is saved on this device and pre-fills your orders automatically.</p>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Full Name *</label>
+        <input id="pf-name" type="text" placeholder="Jane Smith" style="width:100%;padding:11px;border-radius:10px;border:2px solid #e5e7eb;font-size:15px;margin-top:4px;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Email Address *</label>
+        <input id="pf-email" type="email" placeholder="jane@example.com" style="width:100%;padding:11px;border-radius:10px;border:2px solid #e5e7eb;font-size:15px;margin-top:4px;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Phone Number *</label>
+        <input id="pf-phone" type="tel" placeholder="(248) 555-1234" style="width:100%;padding:11px;border-radius:10px;border:2px solid #e5e7eb;font-size:15px;margin-top:4px;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">🏠 Home / Primary Address *</label>
+        <input id="pf-addr" type="text" placeholder="1247 Bielby St, Waterford, MI" style="width:100%;padding:11px;border-radius:10px;border:2px solid #e5e7eb;font-size:15px;margin-top:4px;box-sizing:border-box" oninput="this.style.borderColor=''">
+        <p style="font-size:11px;color:var(--t3);margin:4px 0 0">Include street number, street name, and city (e.g. 1247 Bielby St, Waterford)</p>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">🏢 Alternate Address (optional)</label>
+        <input id="pf-addr2" type="text" placeholder="e.g. 123 Work Blvd, Auburn Hills, MI" style="width:100%;padding:11px;border-radius:10px;border:2px solid #e5e7eb;font-size:15px;margin-top:4px;box-sizing:border-box">
+        <p style="font-size:11px;color:var(--t3);margin:4px 0 0">Work, school, or any other delivery location</p>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Preferred Payment</label>
+        <select id="pf-pay" style="width:100%;padding:11px;border-radius:10px;border:2px solid #e5e7eb;font-size:15px;margin-top:4px;box-sizing:border-box">
+          <option value="venmo">💜 Venmo</option>
+          <option value="cash">💵 Cash</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Delivery Notes (optional)</label>
+        <input id="pf-notes" type="text" placeholder="Leave at front door, ring bell, etc." style="width:100%;padding:11px;border-radius:10px;border:2px solid #e5e7eb;font-size:15px;margin-top:4px;box-sizing:border-box">
+      </div>
+    </div>
+    <button onclick="saveProfileForm()" style="width:100%;padding:14px;background:var(--f);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;margin-top:20px">💾 Save Profile</button>
+    <button onclick="clearProfile()" style="width:100%;padding:10px;background:none;color:#999;border:none;font-size:13px;cursor:pointer;margin-top:8px">Clear saved info</button>
+  </div>
+</div>
 
 >
