@@ -1628,7 +1628,12 @@ function applyCoupon(){
     if(msg){msg.textContent='❌ Invalid code';msg.style.display='block';msg.style.color='var(--cl)';}
   }
 }
-function submitOrder(total){
+function submitOrder(){
+  // Calculate total from cart
+  var food=cart.reduce(function(s,i){return s+i.sz.p*i.qty;},0);
+  var del=deliveryFee||5;
+  var couponDisc=activeCoupon?Math.round(food*(activeCoupon.pct||0)/100*100)/100:0;
+  var total=food-couponDisc+(cart.length>0?del:0);
   const name   = ($('ord-name') ||{value:''}).value.trim();
   const email  = ($('ord-email')||{value:''}).value.trim();
   const phone  = ($('ord-phone')||{value:''}).value.trim();
@@ -2803,7 +2808,7 @@ function showCart(){
           <input id="ord-name" class="fi-sel" placeholder="Full name *" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
           <input id="ord-email" class="fi-sel" placeholder="Email address *" type="email" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
           <input id="ord-phone" class="fi-sel" placeholder="Phone number *" type="tel" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
-          <div id="addr-toggle" style="display:none;margin-bottom:6px;display:flex;gap:8px"><button type="button" id="addr-btn-home" onclick="switchAddr('home')" style="flex:1;padding:7px;border-radius:8px;border:2px solid var(--f);background:var(--f);color:#fff;font-size:11px;font-weight:700;cursor:pointer">🏠 Home</button><button type="button" id="addr-btn-alt" onclick="switchAddr('alt')" style="flex:1;padding:7px;border-radius:8px;border:2px solid #e5e7eb;background:#fff;color:#666;font-size:11px;font-weight:700;cursor:pointer">🏢 Alternate</button></div>
+          <div id="addr-toggle" style="display:none;margin-bottom:6px;gap:8px"><button type="button" id="addr-btn-home" onclick="switchAddr('home')" style="flex:1;padding:7px;border-radius:8px;border:2px solid var(--f);background:var(--f);color:#fff;font-size:11px;font-weight:700;cursor:pointer">🏠 Home</button><button type="button" id="addr-btn-alt" onclick="switchAddr('alt')" style="flex:1;padding:7px;border-radius:8px;border:2px solid #e5e7eb;background:#fff;color:#666;font-size:11px;font-weight:700;cursor:pointer">🏢 Alternate</button></div>
           <input id="ord-addr" class="fi-sel" placeholder="Street address (e.g. 1247 Bielby St, Waterford) *" oninput="this.style.borderColor=''" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
           <select id="ord-new" class="fi-sel" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%;background:#fff">
             <option value="returning">Nope! I am back for more! 😋</option>
@@ -2815,8 +2820,8 @@ function showCart(){
           </select>
           <textarea id="ord-notes" class="fi-sel" placeholder="Comments or special instructions (delivery window, etc.)" rows="2" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%;resize:none"></textarea>
         </div>
-        <button class="bp" onclick="submitOrder(${total.toFixed(2)})" style="margin-bottom:10px">
-          📋 Place Order · $${total.toFixed(2)}
+        <button class="bp" onclick="submitOrder()" style="margin-bottom:10px">
+          📋 Place Order
         </button>
         <p style="font-size:11px;color:var(--t3);text-align:center">Orders close Friday 6 PM · Delivered Monday</p>
       `:''}
