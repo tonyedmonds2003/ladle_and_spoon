@@ -1629,11 +1629,13 @@ function applyCoupon(){
   }
 }
 function submitOrder(){
+  console.log('submitOrder called, cart:', cart.length);
   // Calculate total from cart
   var food=cart.reduce(function(s,i){return s+i.sz.p*i.qty;},0);
   var del=deliveryFee||5;
   var couponDisc=activeCoupon?Math.round(food*(activeCoupon.pct||0)/100*100)/100:0;
   var total=food-couponDisc+(cart.length>0?del:0);
+  try{
   const name   = ($('ord-name') ||{value:''}).value.trim();
   const email  = ($('ord-email')||{value:''}).value.trim();
   const phone  = ($('ord-phone')||{value:''}).value.trim();
@@ -1699,6 +1701,7 @@ function submitOrder(){
       mode:    'no-cors'  // Apps Script doesn't need CORS preflight
     }).catch(err => console.log('Sheet sync failed (offline?):', err));
   }
+  }catch(err){ console.error('submitOrder error:', err); toast('Error: '+err.message); }
 }
 
 function showOrderConfirmation(o){
@@ -2839,6 +2842,74 @@ function showCart(){
   var tog=$('addr-toggle');
   if(tog) tog.style.display = prof.addr2 ? 'flex' : 'none';
 }
+function showCart(){
+  const food = cart.reduce((a,b)=>a+b.sz.p*b.qty,0);
+  const del = mySub?3:5;
+  const couponDisc = appliedCoupon==='WELCOMEBACK'?Math.round(food*0.1):0;
+  const total = food - couponDisc + (cart.length>0?del:0);
+  $('ctc').innerHTML = `
+    <div class="hdl"><div class="hdl-b"></div></div>
+    <div class="cs">
+      <div class="sh"><div class="st">Your Order</div></div>
+      ${mySub?'<div class="sub-note-box">📦 Subscriber prices applied · Delivery $${del}</div>':''}
+      ${cart.length===0
+        ?'<div style="text-align:center;padding:30px 0;font-size:44px">🛒<p style="color:var(--t3);font-size:14px;margin-top:10px">Your cart is empty</p></div>'
+        :cart.map((c,i)=>`<div class="ci">
+          <div class="ciem">${c.em}</div>
+          <div class="ciinf"><strong>${c.n}</strong><span>${c.sz.l} · ${c.sz.o} × ${c.qty}</span></div>
+          <div class="cip">$${(c.sz.p*c.qty).toFixed(2)}</div>
+          <button class="cirm" onclick="rmItem(${i})">✕</button>
+        </div>`).join('')}
+      ${cart.length>0?`
+        <div class="cart-summary">
+          <div class="cs-row"><span>Food subtotal</span><span>$${food.toFixed(2)}</span></div>
+          ${couponDisc>0?`<div class="cs-row" style="color:var(--sg)"><span>WELCOMEBACK discount</span><span>-$${couponDisc.toFixed(2)}</span></div>`:''}
+          <div class="cs-row"><span>Delivery fee</span><span>$${del}.00</span></div>
+          <div class="cs-row tot"><span>Total</span><span>$${total.toFixed(2)}</span></div>
+        </div>
+        <div style="margin:14px 0 8px;font-size:13px;font-weight:700;color:var(--t2)">Coupon Code</div>
+        <div style="display:flex;gap:7px;margin-bottom:14px">
+          <input id="coupon-inp" class="fi-sel" placeholder="Enter promo code" style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none">
+          <button onclick="applyCoupon()" style="padding:10px 14px;background:var(--f);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">Apply</button>
+        </div>
+        <div id="coupon-msg" style="font-size:12px;color:var(--sg);margin-bottom:10px;display:none"></div>
+        <div style="margin:0 0 8px;font-size:13px;font-weight:700;color:var(--t2)">Complete Your Order</div>
+        <div style="display:grid;gap:9px;margin-bottom:14px">
+          <input id="ord-name" class="fi-sel" placeholder="Full name *" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
+          <input id="ord-email" class="fi-sel" placeholder="Email address *" type="email" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
+          <input id="ord-phone" class="fi-sel" placeholder="Phone number *" type="tel" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
+          <div id="addr-toggle" style="display:none;margin-bottom:6px;gap:8px"><button type="button" id="addr-btn-home" onclick="switchAddr('home')" style="flex:1;padding:7px;border-radius:8px;border:2px solid var(--f);background:var(--f);color:#fff;font-size:11px;font-weight:700;cursor:pointer">🏠 Home</button><button type="button" id="addr-btn-alt" onclick="switchAddr('alt')" style="flex:1;padding:7px;border-radius:8px;border:2px solid #e5e7eb;background:#fff;color:#666;font-size:11px;font-weight:700;cursor:pointer">🏢 Alternate</button></div>
+          <input id="ord-addr" class="fi-sel" placeholder="Street address (e.g. 1247 Bielby St, Waterford) *" oninput="this.style.borderColor=''" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%">
+          <select id="ord-new" class="fi-sel" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%;background:#fff">
+            <option value="returning">Nope! I am back for more! 😋</option>
+            <option value="new">Yes I am New and hungry! 🎉</option>
+          </select>
+          <select id="ord-pay" class="fi-sel" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%;background:#fff">
+            <option value="venmo">Venmo (QR Code Provided Here)</option>
+            <option value="cash">Cash on Delivery</option>
+          </select>
+          <textarea id="ord-notes" class="fi-sel" placeholder="Comments or special instructions (delivery window, etc.)" rows="2" style="padding:10px;border-radius:10px;border:2px solid var(--bd);font-size:13px;outline:none;width:100%;resize:none"></textarea>
+        </div>
+        <button class="bp" onclick="submitOrder()" style="margin-bottom:10px">
+          📋 Place Order
+        </button>
+        <p style="font-size:11px;color:var(--t3);text-align:center">Orders close Friday 6 PM · Delivered Monday</p>
+      `:''}
+    </div>`;
+  openOv('ov-cart');
+  // Pre-fill if subscriber
+  const prof=getProfile();
+  if(prof.name&&$('ord-name'))$('ord-name').value=prof.name;
+  if(prof.email&&$('ord-email'))$('ord-email').value=prof.email;
+  if(prof.phone&&$('ord-phone'))$('ord-phone').value=prof.phone;
+  if(prof.addr&&$('ord-addr'))$('ord-addr').value=prof.addr;
+  if(prof.pay&&$('ord-pay'))$('ord-pay').value=prof.pay;
+  if(prof.notes&&$('ord-notes'))$('ord-notes').value=prof.notes;
+  // Show address toggle if alt address exists
+  var tog=$('addr-toggle');
+  if(tog) tog.style.display = prof.addr2 ? 'flex' : 'none';
+}
+
 
 function rmItem(i){cart.splice(i,1);updCart();showCart();}
 
