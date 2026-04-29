@@ -3001,40 +3001,52 @@ function buildMonthly(){
     var svH=H+bp+tP;
     var o=[];
     o.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+sw+' '+svH+'" width="100%" style="display:block">');
+    // Grid lines
     tks.forEach(function(tv){
       if(tv>maxV*1.05)return;
       var gy=tP+H-Math.round(tv/maxV*H);
       o.push('<line x1="'+lp+'" y1="'+gy+'" x2="'+(sw-4)+'" y2="'+gy+'" stroke="#ebebeb" stroke-width="1"/>');
       if(tv>0){var lb=tv>=1000?'$'+(tv/1000).toFixed(0)+'k':'$'+tv;o.push('<text x="'+(lp-4)+'" y="'+(gy+4)+'" text-anchor="end" font-size="9" fill="#ccc">'+lb+'</text>');}
     });
+    // Axis line
     o.push('<line x1="'+lp+'" y1="'+(tP+H)+'" x2="'+(sw-4)+'" y2="'+(tP+H)+'" stroke="#ddd" stroke-width="1.5"/>');
+    // Bars - height based on total, components are proportional slices
     cd.forEach(function(m,i){
       if(!m.total)return;
       var bx=lp+i*(W+gap);
-      var s2=Math.round(Math.max(0,m.soup||0)/maxV*H);
-      var l2=Math.round(Math.max(0,m.salad||0)/maxV*H);
-      var b2=Math.round(Math.max(0,(m.bakery||0)+(m.misc||0))/maxV*H);
-      var d2=Math.round(Math.max(0,m.delivery||0)/maxV*H);
-      var tot=s2+l2+b2+d2;
+      var tot=m.total;
+      var totalBarH=Math.round(tot/maxV*H);
+      // Proportional component heights that sum to totalBarH
+      var food=Math.max(1,(m.soup||0)+(m.salad||0)+(m.bakery||0)+(m.misc||0));
+      var del=m.delivery||0;
+      var delH=Math.round(del/tot*totalBarH);
+      var remH=totalBarH-delH;
+      var sh=Math.round((m.soup||0)/food*remH);
+      var lh=Math.round((m.salad||0)/food*remH);
+      var bkh=Math.round(((m.bakery||0)+(m.misc||0))/food*remH);
+      var soupH=remH-lh-bkh; // remainder goes to soup to avoid rounding gaps
       var by=tP+H,sy=by;
-      if(s2>0){sy-=s2;o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+s2+'" fill="#1B3D1C" rx="2"/>');}  
-      if(l2>0){sy-=l2;o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+l2+'" fill="#7FAF6E" rx="2"/>');}  
-      if(b2>0){sy-=b2;o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+b2+'" fill="#D4943A" rx="2"/>');}  
-      if(d2>0){sy-=d2;o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+d2+'" fill="#1d4ed8" rx="2"/>');}  
-      var lb2='$'+(m.total/1000).toFixed(1)+'k';
+      if(soupH>0){sy-=soupH;o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+soupH+'" fill="#1B3D1C" rx="2"/>');}  
+      if(lh>0)   {sy-=lh;   o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+lh+'"    fill="#7FAF6E" rx="2"/>');}  
+      if(bkh>0)  {sy-=bkh;  o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+bkh+'"   fill="#D4943A" rx="2"/>');}  
+      if(delH>0) {sy-=delH; o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+delH+'"  fill="#1d4ed8" rx="2"/>');}  
+      // Value label
+      var lb2='$'+(tot/1000).toFixed(1)+'k';
       var ly,lc;
-      if(tot>=20){ly=sy+13;lc='#fff';}else{ly=Math.max(tP+10,sy-3);lc='#444';}
+      if(totalBarH>=20){ly=sy+13;lc='#fff';}else{ly=Math.max(tP+10,sy-3);lc='#444';}
       o.push('<text x="'+(bx+W/2)+'" y="'+ly+'" text-anchor="middle" font-size="8.5" font-weight="bold" fill="'+lc+'">'+lb2+'</text>');
+      // X labels
       var pts=(m.m||'').split("'");
       var xc=bx+W/2;
       o.push('<text x="'+xc+'" y="'+(tP+H+13)+'" text-anchor="middle" font-size="8" fill="#999">'+((pts[0]||'').trim())+'</text>');
-      o.push('<text x="'+xc+'" y="'+(tP+H+23)+'" text-anchor="middle" font-size="8" fill="#bbb">'+(pts[1]?String.fromCharCode(39)+pts[1]:'')+'</text>');
+      o.push('<text x="'+xc+'" y="'+(tP+H+23)+'" text-anchor="middle" font-size="8" fill="#bbb">'+(pts[1]?"'"+pts[1]:'')+'</text>');
     });
     o.push('</svg>');
     rc.innerHTML=o.join('');
     rc.style.height='auto';
   }
 }
+
 function buildOrders(){
   var localOrders=[];
   try{localOrders=JSON.parse(localStorage.getItem('submitted_orders')||'[]');}catch(e){}
