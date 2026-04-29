@@ -1629,7 +1629,6 @@ function applyCoupon(){
   }
 }
 function submitOrder(){
-  try{
   // Calculate total from cart
   var food=cart.reduce(function(s,i){return s+i.sz.p*i.qty;},0);
   var del=mySub?3:5;
@@ -1700,7 +1699,6 @@ function submitOrder(){
       mode:    'no-cors'  // Apps Script doesn't need CORS preflight
     }).catch(err => console.log('Sheet sync failed (offline?):', err));
   }
-  } catch(err) { alert('Order error: ' + err.message + ' | ' + err.stack.split('\n')[0]); }
 }
 
 function showOrderConfirmation(o){
@@ -1711,9 +1709,9 @@ function showOrderConfirmation(o){
       <h2 style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--f);margin-bottom:8px">Order Placed!</h2>
       <p style="color:var(--t3);font-size:14px;margin-bottom:20px">Order ${o.id} · ${o.name}</p>
       <div style="background:var(--cr);border-radius:12px;padding:14px;text-align:left;margin-bottom:18px;font-size:13px">
-        <div style="margin-bottom:6px"><strong>Items:</strong> ${o.items}</div>
-        <div style="margin-bottom:6px"><strong>Address:</strong> ${o.addr}</div>
-        <div style="margin-bottom:6px"><strong>Payment:</strong> ${o.pay==='venmo'?'💙 Venmo':'💵 Cash'}</div>
+        <div style="margin-bottom:6px"><strong>Items:</strong> ${(o.items||[]).map(function(i){return i.name+' '+i.size+' x'+i.qty;}).join(', ')}</div>
+        <div style="margin-bottom:6px"><strong>Address:</strong> ${o.address||'—'}</div>
+        <div style="margin-bottom:6px"><strong>Payment:</strong> ${o.payment==='venmo'?'💙 Venmo':'💵 Cash'}</div>
         <div><strong>Total:</strong> $${o.total.toFixed(2)}</div>
       </div>
       <div style="background:#fef3c7;border-radius:10px;padding:12px;font-size:13px;margin-bottom:18px">
