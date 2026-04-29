@@ -2998,7 +2998,7 @@ function buildMonthly(){
     maxV=Math.ceil(maxV/tickStep)*tickStep;
     var tks=[];
     for(var tv=tickStep;tv<=maxV;tv+=tickStep)tks.push(tv);
-    var H=200,W=24,gap=4,lp=42,bp=34,tP=12;
+    var H=200,W=24,gap=4,lp=42,bp=36,tP=14;
     var sw=lp+(W+gap)*cd.length+8;
     var svH=H+bp+tP;
     var o=[];
@@ -3007,7 +3007,7 @@ function buildMonthly(){
     tks.forEach(function(tv){
       var gy=tP+H-Math.round(tv/maxV*H);
       o.push('<line x1="'+lp+'" y1="'+gy+'" x2="'+(sw-4)+'" y2="'+gy+'" stroke="#ebebeb" stroke-width="1"/>');
-      var lb=tv>=1000?'$'+(tv/1000).toFixed(0)+'k':'$'+tv;
+      var raw=tv/1000;var lb=tv>=1000?'$'+(raw===Math.floor(raw)?Math.floor(raw):raw.toFixed(1))+'k':'$'+tv;
       o.push('<text x="'+(lp-5)+'" y="'+(gy+4)+'" text-anchor="end" font-size="9" fill="#bbb">'+lb+'</text>');
     });
     // Bottom axis
