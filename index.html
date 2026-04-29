@@ -1086,7 +1086,7 @@ function getSoupPhoto(name) {
   if(!name) return null;
   return SOUP_PHOTOS[name.toLowerCase()] || null;
 }
-const MENU_ITEMS = [
+let MENU_ITEMS = [
   {id:'m1',cat:'soup',em:'🥣',n:'Split Pea w/ Bacon',desc:'Slow-cooked split peas with smoky bacon. A cold-weather essential.',tags:[],sz:[{l:'Pint',o:'16oz',p:8},{l:'Quart',o:'32oz',p:15}],soldout:false,al:[],soupId:'s38'},
   {id:'m2',cat:'soup',em:'🍜',n:'Chicken Wonton w/ Bok Choy',desc:'Tender wontons and bok choy in a savory ginger-soy chicken broth.',tags:['new'],sz:[{l:'Pint',o:'16oz',p:8},{l:'Quart',o:'32oz',p:15}],soldout:false,al:[],soupId:'s17'},
   {id:'m3',cat:'soup',em:'🧅',n:'Creamy Swiss Onion',desc:'A luxurious creamy spin on French Onion with deeply caramelized onions.',tags:[],sz:[{l:'Pint',o:'16oz',p:8},{l:'Quart',o:'32oz',p:15}],soldout:false,al:['Dairy'],soupId:'s26'},
@@ -2389,6 +2389,30 @@ function applyAdminData(data){
     // Update weekly menu summary
     if(data.wkmenu && data.wkmenu.length > 0){
       WKMENU = data.wkmenu;
+      // Also update the customer-facing menu with live items from Sheet
+      MENU_ITEMS = data.wkmenu.map(function(w, i){
+        var isSalad = (w.em||'').includes('🥗') || /salad/i.test(w.n||'');
+        // Build size array from sz string or default
+        var sizes;
+        if(isSalad){
+          sizes = [{l:'Salad',o:'reg',p:15}];
+        } else {
+          sizes = [{l:'Pint',o:'16oz',p:8},{l:'Quart',o:'32oz',p:15}];
+        }
+        return {
+          id: 'm'+(i+1),
+          cat: isSalad ? 'salad' : 'soup',
+          em: w.em || (isSalad ? '🥗' : '🥣'),
+          n: w.n || '',
+          desc: w.desc || '',
+          tags: [],
+          sz: sizes,
+          soldout: false,
+          al: [],
+          soupId: w.soupId || ''
+        };
+      });
+      buildMenu();
       buildWkMenu();
     }
 
