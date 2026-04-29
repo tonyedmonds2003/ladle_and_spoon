@@ -1099,13 +1099,13 @@ const PLANS = [
   {id:'sal',icon:'🥗🥗',name:'Salad Lover Plan',desc:'2 of the weekly salads — perfect for lighter eating or meal prep.',detail:'2 Salads / week',price:28,disc:25.20,del:5,delDisc:3,popular:false},
 ];
 
-const MONTHLY = [
+let MONTHLY = [
   {m:"Mar '25",r:3154},{m:"Apr '25",r:2123},{m:"May '25",r:1961},{m:"Jun '25",r:2388},
   {m:"Jul '25",r:1610},{m:"Aug '25",r:1962},{m:"Sep '25",r:2879},{m:"Oct '25",r:2189},
   {m:"Nov '25",r:2540},{m:"Dec '25",r:1810},{m:"Jan '26",r:2146},{m:"Feb '26",r:2192},
 ];
 
-const ORDERS = [
+let ORDERS = [
   {id:"#001",n:"Mary Ellen Rogers",it:"Goat Cheese Blueberry Salad x3, Asian Layered Salad x1",tot:"$59",addr:"6084 Kiev St, West Bloomfield",note:"",pay:"venmo",st:"confirmed"},
   {id:"#002",n:"Casey Krupsky",it:"Split Pea Pt x1",tot:"$8",addr:"Prues",note:"",pay:"cash",st:"new"},
   {id:"#003",n:"Mary Anne Webb",it:"Split Pea Qt x1, Goat Cheese Salad x1",tot:"$30",addr:"2992 Edgewater",note:"Salad split",pay:"cash",st:"new"},
@@ -1131,7 +1131,7 @@ const ORDERS = [
   {id:"#023",n:"Turkey Mance",it:"Split Pea Qt x1, Chicken Wonton Qt x1, Swiss Onion Pt x1",tot:"$38",addr:"1926 Allendale Ave",note:"",pay:"cash",st:"new"},
 ];
 
-const CUSTS = [
+let CUSTS = [
   {n:"Terry Barnette",i:"TB",email:"tr349@yahoo.com",phone:"2484202731",addr:"2452 Pine Lake Ave, Keego Harbor, MI, 48320, USA",ltv:2453,cnt:44,last:"Feb 20, 2026",days:49,risk:false,vip:true},
   {n:"Loren Brown",i:"LB",email:"lmbrown6026@sbcglobal.net",phone:"2484966011",addr:"6026 Gordon Rd Waterford, Mi 48327",ltv:1845,cnt:44,last:"Feb 20, 2026",days:49,risk:false,vip:true},
   {n:"Donald Neely",i:"DN",email:"gunslinger17@comcast.net",phone:"2487665239",addr:"Waterford area",ltv:1696,cnt:37,last:"Dec 29, 2025",days:102,risk:true,vip:true},
@@ -1270,7 +1270,7 @@ const CUSTS = [
   {n:"Todd Dean",i:"TD",email:"todddean555@icloud.com",phone:"2482165831",addr:"995 north cass lake rd, apt 132 Waterford mi",ltv:0,cnt:0,last:"Unknown",days:999,risk:true,vip:false},
 ];
 
-const REACT = [
+let REACT = [
   {n:"Tobby",email:"Lee922uh@aol.com",last:"Mar 3, 2025",days:403,orders:3},
   {n:"Waterford Eagles",email:"info@waterfordeagles.com",last:"Mar 31, 2025",days:375,orders:4},
   {n:"Tobby Wheelis",email:"vicki2k3@aol.com",last:"Apr 21, 2025",days:354,orders:3},
@@ -1321,7 +1321,7 @@ const REACT = [
   {n:"Stacey Sheffer",email:"stacsh13@yahoo.com",last:"Aug 25, 2025",days:228,orders:6},
 ];
 
-const AREAS = [
+let AREAS = [
   {n:'Kiev St / West Bloomfield',custs:5,del:54,score:270,col:'#1B3D1C'},
   {n:'Harbours Blvd, Waterford',custs:5,del:36,score:180,col:'#2E6B30'},
   {n:'Bielby St, Waterford',custs:5,del:34,score:170,col:'#3A7A3C'},
@@ -1332,7 +1332,7 @@ const AREAS = [
   {n:'Willow Way, Waterford',custs:4,del:16,score:64,col:'#6AAB6A'},
 ];
 
-const WKMENU = [
+let WKMENU = [
   {em:'🥣',n:'Split Pea w/ Bacon',sz:'Pints $8 / Quarts $15',rev:'$85'},
   {em:'🍜',n:'Chicken Wonton w/ Bok Choy',sz:'Pints $8 / Quarts $15',rev:'$101'},
   {em:'🧅',n:'Creamy Swiss Onion',sz:'Pints $8 / Quarts $15',rev:'$48'},
@@ -1386,7 +1386,7 @@ let cart=[], szi={}, isAdmin=false, selPlan=null, mySub=null, starPending={};
 
 
 // ════ INIT ════
-const ROUTE_STOPS = [
+let ROUTE_STOPS = [
   {num:"H",n:"Lia's Kitchen",a:"1247 Bielby St, Waterford",items:"",pay:"",note:"",lat:42.6812,lng:-83.3867},
   {num:"1",n:"Karen Zuk",a:"Waterford",items:"Split Pea Pt, Wonton Pt, Asian Salad",pay:"venmo",note:"",lat:42.6823,lng:-83.3867},
   {num:"2",n:"Craig",a:"1246 Muskingum, Waterford",items:"Split Pea Qt, Wonton Qt",pay:"cash",note:"",lat:42.6823,lng:-83.3856},
@@ -2174,9 +2174,7 @@ function refreshAdminData(){
         sessionStorage.setItem('admin_data', JSON.stringify(data));
         sessionStorage.setItem('admin_data_time', Date.now().toString());
         applyAdminData(data);
-        var mo = data.monthly || [];
-        var rev = mo.reduce(function(s,m){ return s+(parseFloat(m.total)||parseFloat(m.r)||0); },0);
-        toast('✅ Live: ' + mo.length + ' months, $' + Math.round(rev).toLocaleString() + ' total, week=$' + (data.weekRevenue||0));
+        toast('✅ Dashboard updated from Sheet');
       } else {
         toast('⚠️ Sheet error: ' + (data&&data.error||'unknown'));
       }
@@ -2302,7 +2300,6 @@ function applyAdminData(data){
 }
 
 function updateKPICards(data) {
-  console.log('updateKPICards called, monthly:', (data.monthly||[]).length, 'weekRev:', data.weekRevenue);
   try {
     var orders  = data.orders  || [];
     var monthly = data.monthly || [];
@@ -2335,9 +2332,6 @@ function updateKPICards(data) {
       var v = parseFloat(m.total)||parseFloat(m.r)||0;
       return (!best || v > (parseFloat(best.total)||parseFloat(best.r)||0)) ? m : best;
     }, null);
-
-    console.log('KPI DOM update — weekRev:', weekRev, 'yearlyRev:', yearlyRev, 'kpi-el:', $('kpi-week-rev') ? 'FOUND' : 'NOT FOUND');
-    console.log('MONTHLY array now has', MONTHLY.length, 'items, first:', MONTHLY[0]&&MONTHLY[0].m);
 
     if ($('kpi-week-rev'))     $('kpi-week-rev').textContent     = '$' + Math.round(weekRev).toLocaleString();
     if ($('kpi-week-orders'))  $('kpi-week-orders').textContent  = weekOrds + ' orders this week';
@@ -2806,7 +2800,7 @@ function adm(sec,btn){
   document.querySelectorAll('.asec').forEach(s=>s.classList.remove('active'));
   btn.classList.add('active');$('adm-'+sec).classList.add('active');
 }
-const MONTHLY_DETAIL = [
+let MONTHLY_DETAIL = [
   {m:"Apr '26",total:824,soup:408,salad:306,bakery:0,misc:0,orders:22,delivery:110,avg_wk:824,avg_ord:37,food:714},
   {m:"Mar '26",total:2868,soup:1654,salad:829,bakery:0,misc:0,orders:77,delivery:385,avg_wk:574,avg_ord:37,food:2483},
   {m:"Feb '26",total:2192,soup:1291,salad:481,bakery:100,misc:0,orders:64,delivery:320,avg_wk:438,avg_ord:34,food:1872},
@@ -2964,7 +2958,7 @@ function buildOrders(){
 }
 
 function buildWkMenu(){(function(){var _e=$('wkml');if(_e)_e.innerHTML=WKMENU.map(m=>`<div class="wmc"><div class="wme">${m.em}</div><div class="wmi"><strong>${m.n}</strong><span>${m.sz} · ${m.rev} so far</span></div><div class="wmact"><button class="wmb mv" onclick="toast('Swap item')">↔</button><button class="wmb rm" onclick="toast('Removed')">✕</button></div></div>`).join('');})();}
-const SOUP_INTEL = [
+let SOUP_INTEL = [
   {n:"Goat Cheese Blueberry Salad",cat:"Salad",rev:306,weeks:1,avg:306,last:306,last_date:"Apr 07, 2026",last_sort:20260407},
   {n:"Kielbasa Potato",cat:"Soup",rev:508,weeks:2,avg:254,last:267,last_date:"Nov 11, 2025",last_sort:20251111},
   {n:"Italian Chop Salad",cat:"Salad",rev:224,weeks:1,avg:224,last:224,last_date:"Mar 24, 2026",last_sort:20260324},
