@@ -216,7 +216,7 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
 .ccrd{background:#fff;border-radius:var(--r);padding:13px;box-shadow:var(--sh);margin-bottom:12px;}
 .ccrd h3{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--f);margin-bottom:12px;}
 /* CHART */
-.bch{display:flex;align-items:flex-end;gap:3px;height:76px;}
+.bch{display:block;height:auto;min-height:160px;}
 .bw{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;}
 .bar{width:100%;background:var(--sgl);border-radius:3px 3px 0 0;min-height:4px;}
 .bar.hi{background:var(--f);}
@@ -560,10 +560,10 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
     <div class="ccrd">
       <h3>Payment Split — This Week</h3>
       <div class="psplit">
-        <div class="pbox"><div class="pbico">📱</div><div class="pbv">11</div><div class="pbl">Venmo orders</div></div>
-        <div class="pbox"><div class="pbico">💵</div><div class="pbv">12</div><div class="pbl">Cash orders</div></div>
-        <div class="pbox"><div class="pbico">💰</div><div class="pbv">$396</div><div class="pbl">Venmo due</div></div>
-        <div class="pbox"><div class="pbico">🤑</div><div class="pbv">$318</div><div class="pbl">Cash at door</div></div>
+        <div class="pbox"><div class="pbico">📱</div><div class="pbv" id="ps-venmo-cnt">11</div><div class="pbl">Venmo orders</div></div>
+        <div class="pbox"><div class="pbico">💵</div><div class="pbv" id="ps-cash-cnt">12</div><div class="pbl">Cash orders</div></div>
+        <div class="pbox"><div class="pbico">💰</div><div class="pbv" id="ps-venmo-amt">$396</div><div class="pbl">Venmo due</div></div>
+        <div class="pbox"><div class="pbico">🤑</div><div class="pbv" id="ps-cash-amt">$318</div><div class="pbl">Cash at door</div></div>
       </div>
     </div>
     <div class="ccrd"><h3>Monthly Revenue</h3><div class="bch" id="rch"></div></div>
@@ -2124,6 +2124,7 @@ function publishMenu(){
 
 
 window.onload = () => {
+  console.log("APP VERSION: 2026-04-28-v12");
   // Clear admin data cache on every fresh page load
   sessionStorage.removeItem('admin_data');
   sessionStorage.removeItem('admin_data_time');
@@ -2369,7 +2370,17 @@ function updateKPICards(data) {
       return (!best || v > (parseFloat(best.total)||parseFloat(best.r)||0)) ? m : best;
     }, null);
 
-    if ($('kpi-week-rev'))     $('kpi-week-rev').textContent     = '$' + Math.round(weekRev).toLocaleString();
+        // Payment split from live orders
+    var venmoOrds = orders.filter(function(o){ return o.pay==='venmo'; });
+    var cashOrds  = orders.filter(function(o){ return o.pay==='cash';  });
+    var venmoAmt  = venmoOrds.reduce(function(s,o){ return s+(parseInt((o.tot||'0').replace(/[^0-9]/g,''))||0); }, 0);
+    var cashAmt   = cashOrds.reduce(function(s,o){  return s+(parseInt((o.tot||'0').replace(/[^0-9]/g,''))||0); }, 0);
+    if($('ps-venmo-cnt')) $('ps-venmo-cnt').textContent = venmoOrds.length;
+    if($('ps-cash-cnt'))  $('ps-cash-cnt').textContent  = cashOrds.length;
+    if($('ps-venmo-amt')) $('ps-venmo-amt').textContent = '$'+venmoAmt;
+    if($('ps-cash-amt'))  $('ps-cash-amt').textContent  = '$'+cashAmt;
+
+if ($('kpi-week-rev'))     $('kpi-week-rev').textContent     = '$' + Math.round(weekRev).toLocaleString();
     if ($('kpi-week-orders'))  $('kpi-week-orders').textContent  = weekOrds + ' orders this week';
     if ($('kpi-yearly-rev'))   $('kpi-yearly-rev').textContent   = '$' + Math.round(yearlyRev).toLocaleString();
     if ($('kpi-yearly-weeks')) $('kpi-yearly-weeks').textContent = monthly.length + ' months tracked';
@@ -2854,14 +2865,44 @@ let MONTHLY_DETAIL = [
 ];
 
 function buildDash(){
-  const allR=MONTHLY.map(m=>m.r||0);
-  const mx=Math.max(...allR)||3000;
-  const mn=Math.min(...allR.filter(r=>r>0))||0;
-  const base=Math.floor(mn*0.7/500)*500;
-  const rng=mx-base||1;
-  (function(){var _e=$('rch');if(_e)_e.innerHTML=MONTHLY.map((m,i)=>`<div class="bw"><div class="bar ${i===MONTHLY.length-1?'hi':''}" style="height:${Math.max(2,(m.r-base)/rng*100)}%"></div><div class="bl">${m.m.replace(' ','<br>')}<br>${(m.r/1000).toFixed(1)}k</div></div>`).join('');})();
+  var allR=MONTHLY.map(function(m){return m.r||0;});
+  var mx=Math.max.apply(null,allR)||3000;
+  var mn=Math.min.apply(null,allR.filter(function(r){return r>0;}))||0;
+  var base=Math.floor(mn*0.75/500)*500;
+  var rng=mx-base||1;
+
+  // SVG bar chart
+  var _e=$('rch');
+  if(_e){
+    var cH=120,cW=22,gap=3,lPad=32,bPad=24,tPad=8;
+    var tot=lPad+(cW+gap)*MONTHLY.length;
+    var svg='<svg viewBox="0 0 '+tot+' '+(cH+bPad+tPad)+'" width="100%" style="display:block;overflow:visible">';
+    // Grid lines
+    [0,0.25,0.5,0.75,1].forEach(function(pct){
+      var val=base+pct*rng;
+      var y=tPad+cH-(pct*cH);
+      svg+='<line x1="'+lPad+'" y1="'+y+'" x2="'+(tot-2)+'" y2="'+y+'" stroke="#e5e7eb" stroke-width="1"/>';
+      svg+='<text x="'+(lPad-4)+'" y="'+(y+4)+'" text-anchor="end" font-size="9" fill="#999">$'+(val>=1000?(val/1000).toFixed(1)+'k':val)+'</text>';
+    });
+    // Bars
+    MONTHLY.forEach(function(m,i){
+      var x=lPad+i*(cW+gap);
+      var h=Math.max(2,(m.r-base)/rng*cH);
+      var y=tPad+cH-h;
+      var isLast=i===MONTHLY.length-1;
+      svg+='<rect x="'+x+'" y="'+y+'" width="'+cW+'" height="'+h+'" fill="'+(isLast?'var(--f)':'var(--sgl)')+'" rx="2"/>';
+      // Label below
+      var parts=(m.m||'').split("'");
+      svg+='<text x="'+(x+cW/2)+'" y="'+(tPad+cH+12)+'" text-anchor="middle" font-size="8" fill="#666">'+parts[0].trim()+'</text>';
+      svg+='<text x="'+(x+cW/2)+'" y="'+(tPad+cH+21)+'" text-anchor="middle" font-size="8" fill="#999">'+(parts[1]?("'"+parts[1]):'')+'</text>';
+    });
+    svg+='</svg>';
+    _e.innerHTML=svg;
+    _e.style.height='auto';
+  }
+
   const top=ALL_SOUPS.filter(s=>s.cat==='soup').sort((a,b)=>b.rev-a.rev).slice(0,8);
-  const mxr=top[0].rev;
+  const mxr=top[0]&&top[0].rev||1;
   (function(){var _e=$('bsl');if(_e)_e.innerHTML=top.map((s,i)=>`<li>
     <div class="bsr ${i===0?'top':''}">${i+1}</div>
     <span style="font-size:17px">${s.em}</span>
