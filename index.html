@@ -571,12 +571,12 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
   </div>
 
   <div class="asec" id="adm-orders">
-    <div class="sh"><div class="st">Week of Apr 7 · 23 Orders · $714</div><span class="sl" onclick="toast('Exported!')">Export CSV</span></div>
+    <div class="sh"><div class="st" id="ord-week-title">Week of Apr 7 · 23 Orders · $714</div><span class="sl" onclick="toast('Exported!')">Export CSV</span></div>
     <div id="ordl"></div>
   </div>
 
   <div class="asec" id="adm-menu">
-    <div class="sh"><div class="st">Week of Apr 7</div></div>
+    <div class="sh"><div class="st" id="menu-week-title">Week of Apr 7</div></div>
     <!-- Featured items for subscription plan defaults -->
     <div class="ccrd" style="background:var(--sgl);border:1.5px solid var(--sg)">
       <h3 style="color:var(--f)">⭐ Subscription Plan Defaults</h3>
@@ -777,10 +777,10 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
       </button>
     </div>
     <div class="kgrid">
-      <div class="kc"><div class="kl">Best Month</div><div class="kv">$3,154</div><div class="ks">Mar 2025 · $631/wk avg</div></div>
-      <div class="kc"><div class="kl">Worst Month</div><div class="kv">$1,610</div><div class="ks">Jul 2025 · $537/wk avg</div></div>
-      <div class="kc"><div class="kl">Total Tracked</div><div class="kv">$28,859</div><div class="ks">14 months · 57 weeks</div></div>
-      <div class="kc"><div class="kl">Del. Fees Collected</div><div class="kv">$1,110</div><div class="ks">Since Jan 2026 · $5/order</div></div>
+      <div class="kc"><div class="kl">Best Month</div><div class="kv" id="mo-best-val">$3,154</div><div class="ks" id="mo-best-sub">Mar 2025 · $631/wk avg</div></div>
+      <div class="kc"><div class="kl">Worst Month</div><div class="kv" id="mo-worst-val">$1,610</div><div class="ks" id="mo-worst-sub">Jul 2025 · $537/wk avg</div></div>
+      <div class="kc"><div class="kl">Total Tracked</div><div class="kv" id="mo-total-val">$28,859</div><div class="ks" id="mo-total-sub">14 months · 57 weeks</div></div>
+      <div class="kc"><div class="kl">Del. Fees Collected</div><div class="kv" id="mo-del-val">$1,110</div><div class="ks" id="mo-del-sub">Since Jan 2026 · $5/order</div></div>
     </div>
     <div class="ccrd">
       <h3>Month-by-Month Breakdown</h3>
@@ -1340,7 +1340,7 @@ let WKMENU = [
   {em:'🥗',n:'Asian Layered Salad',sz:'$14 each',rev:'$68'},
 ];
 
-const ROUTE = [
+let ROUTE = [
   {lbl:"s",num:"🏠",n:"Lia's Kitchen",a:"Home base — pack and load",ord:"",note:"",pay:""},
   {num:"1",n:"Mary Ellen Rogers",a:"6084 Kiev St, West Bloomfield",ord:"Goat Cheese Salad x3, Asian Salad x1",note:"",pay:"venmo"},
   {num:"2",n:"Pamela Dennis",a:"3980 Fieldview Ave",ord:"Split Pea Pt, Wonton Pt, Swiss Onion Pt, Asian Salad",note:"",pay:"venmo"},
@@ -2202,6 +2202,20 @@ function applyAdminData(data){
       ORDERS = data.orders;
       buildOrders();
     }
+    // Update week label using weekRevenue and order count
+    var weekOrdCount = data.weekOrders || (data.orders||[]).length;
+    var weekRev2 = data.weekRevenue || 0;
+    var today = new Date();
+    var dayOfWeek = today.getDay();
+    var daysToMonday = (dayOfWeek + 6) % 7;
+    var monday = new Date(today);
+    monday.setDate(today.getDate() - daysToMonday);
+    var weekLabel = 'Week of ' + (monday.getMonth()+1) + '/' + monday.getDate() +
+      ' · ' + weekOrdCount + ' Orders · $' + weekRev2;
+    var ordSt = $('ord-week-title');
+    if(ordSt) ordSt.textContent = weekLabel;
+    var menuSt = $('menu-week-title');
+    if(menuSt) menuSt.textContent = 'Week of ' + (monday.getMonth()+1) + '/' + monday.getDate();
 
     // Update customers
     if(data.customers && data.customers.length > 0){
@@ -2271,6 +2285,7 @@ function applyAdminData(data){
     // Update route
     if(data.route && data.route.length > 0){
       ROUTE_STOPS = data.route;
+      ROUTE = data.route; // buildRoute() reads ROUTE
       buildRoute();
     }
 
@@ -2830,9 +2845,26 @@ function buildDash(){
   </li>`).join('');})();
 }
 function buildMonthly(){
+  if(!MONTHLY_DETAIL || MONTHLY_DETAIL.length === 0) return;
   var mx=Math.max.apply(null,MONTHLY_DETAIL.map(function(m){return m.total;}));
   var tbody=$('monthly-tbody');
   if(!tbody)return;
+
+  // Update stat cards from live data
+  var validMonths = MONTHLY_DETAIL.filter(function(m){ return m.total > 0; });
+  if(validMonths.length > 0){
+    var best  = validMonths.reduce(function(a,b){ return a.total>b.total?a:b; });
+    var worst = validMonths.reduce(function(a,b){ return a.total<b.total?a:b; });
+    var totalRev = validMonths.reduce(function(s,m){ return s+m.total; },0);
+    var totalDel = validMonths.reduce(function(s,m){ return s+(m.delivery||0); },0);
+    if($('mo-best-val'))  $('mo-best-val').textContent  = '$'+Math.round(best.total).toLocaleString();
+    if($('mo-best-sub'))  $('mo-best-sub').textContent  = best.m + ' · $'+Math.round(best.avg_wk||0)+'/wk avg';
+    if($('mo-worst-val')) $('mo-worst-val').textContent = '$'+Math.round(worst.total).toLocaleString();
+    if($('mo-worst-sub')) $('mo-worst-sub').textContent = worst.m + ' · $'+Math.round(worst.avg_wk||0)+'/wk avg';
+    if($('mo-total-val')) $('mo-total-val').textContent = '$'+Math.round(totalRev).toLocaleString();
+    if($('mo-total-sub')) $('mo-total-sub').textContent = validMonths.length+' months tracked';
+    if($('mo-del-val'))   $('mo-del-val').textContent   = '$'+Math.round(totalDel).toLocaleString();
+  }
   var costs=getGroceryCosts();
   var html='';
   MONTHLY_DETAIL.forEach(function(m,i){
