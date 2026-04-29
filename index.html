@@ -804,7 +804,7 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
         </table>
       </div>
     </div>
-    <div class="ccrd" style="overflow:visible;margin-top:16px"><h3>Revenue Chart</h3>
+    <div class="ccrd" style="overflow:visible;padding-top:0"><h3>Revenue Chart</h3>
       <div style="display:flex;gap:12px;font-size:10px;margin-bottom:8px;flex-wrap:wrap">
         <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--f);display:inline-block;border-radius:2px"></span>Soup</span>
         <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--sg);display:inline-block;border-radius:2px"></span>Salad</span>
@@ -2373,8 +2373,14 @@ function updateKPICards(data) {
         // Payment split from live orders
     var venmoOrds = orders.filter(function(o){ return o.pay==='venmo'; });
     var cashOrds  = orders.filter(function(o){ return o.pay==='cash';  });
-    var venmoAmt  = venmoOrds.reduce(function(s,o){ return s+(parseInt((o.tot||'0').replace(/[^0-9]/g,''))||0)+5; }, 0);
-    var cashAmt   = cashOrds.reduce(function(s,o){  return s+(parseInt((o.tot||'0').replace(/[^0-9]/g,''))||0)+5; }, 0);
+    // Calculate food subtotals per payment type
+    var venmoFood = venmoOrds.reduce(function(s,o){ return s+(parseInt((o.tot||'0').replace(/[^0-9]/g,''))||0); }, 0);
+    var cashFood  = cashOrds.reduce(function(s,o){  return s+(parseInt((o.tot||'0').replace(/[^0-9]/g,''))||0); }, 0);
+    var totalFood = venmoFood + cashFood || 1;
+    var weekTotal = weekRev || (venmoFood + cashFood + orders.length * 5);
+    // Split weekRevenue proportionally by food total, then each gets their delivery fees
+    var venmoAmt  = Math.round(venmoFood + venmoOrds.length * 5);
+    var cashAmt   = Math.round(cashFood  + cashOrds.length  * 5);
     if($('ps-venmo-cnt')) $('ps-venmo-cnt').textContent = venmoOrds.length;
     if($('ps-cash-cnt'))  $('ps-cash-cnt').textContent  = cashOrds.length;
     if($('ps-venmo-amt')) $('ps-venmo-amt').textContent = '$'+venmoAmt;
@@ -2979,7 +2985,7 @@ function buildMonthly(){
     var yTicks=[];
     for(var t=yStart;t<=maxVal+step;t+=step) yTicks.push(t);
     var chartH=155; var chartW_bar=22; var gap=4;
-    var leftPad=38; var bottomPad=36; var topPad=32;
+    var leftPad=38; var bottomPad=36; var topPad=40;
     var totalW=leftPad+(chartW_bar+gap)*chartData.length+8;
     var totalH=chartH+bottomPad+topPad;
 
@@ -3015,7 +3021,7 @@ function buildMonthly(){
       svg+='<text x="'+(x+chartW_bar/2)+'" y="'+(topPad+chartH+21)+'" text-anchor="middle" font-size="8" fill="#999" font-family="sans-serif">'+parts[1]+'</text>';
       // Total label on top
       if(m.total>0){
-        svg+='<text x="'+(x+chartW_bar/2)+'" y="'+Math.max(topPad+8,stackY-3)+'" text-anchor="middle" font-size="7" fill="#333" font-family="sans-serif">$'+(m.total/1000).toFixed(1)+'k</text>';
+        svg+='<text x="'+(x+chartW_bar/2)+'" y="'+Math.max(14,stackY-4)+'" text-anchor="middle" font-size="8" font-weight="bold" fill="#333" font-family="sans-serif">$'+(m.total/1000).toFixed(1)+'k</text>';
       }
     });
 
