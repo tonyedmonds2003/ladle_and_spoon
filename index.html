@@ -2987,81 +2987,54 @@ function buildMonthly(){
   });
   tbody.innerHTML=html;
 
-// ── Revenue Bar Chart ──
   var rc=$('rch-monthly');
   if(rc && MONTHLY_DETAIL && MONTHLY_DETAIL.length){
-    var cd = MONTHLY_DETAIL.slice().reverse(); // oldest first
-    var maxV = 0;
-    cd.forEach(function(m){ if((m.total||0)>maxV) maxV=m.total; });
-    if(!maxV) maxV=3000;
-    var minV = maxV;
-    cd.forEach(function(m){ if(m.total>0 && m.total<minV) minV=m.total; });
-    var base = Math.floor(minV*0.75/500)*500;
-    var rng  = maxV - base || 1;
-
-    var H=180, W=26, gap=5, lpad=42, bpad=32, tpad=28;
-    var svgW = lpad + (W+gap)*cd.length + 10;
-    var svgH = H + bpad + tpad;
-
-    // Y-axis ticks
-    var tickStep = rng > 2000 ? 500 : 250;
-    var ticks = [];
-    for(var tv=base; tv<=maxV+tickStep; tv+=tickStep) ticks.push(tv);
-
-    var out = [];
-    out.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+svgW+' '+svgH+'" width="100%">');
-
-    // Grid + Y labels
-    ticks.forEach(function(tv){
-      if(tv > maxV+200) return;
-      var gy = tpad + H - Math.round((tv-base)/rng*H);
-      if(gy < 0 || gy > tpad+H) return;
-      out.push('<line x1="'+lpad+'" y1="'+gy+'" x2="'+(svgW-4)+'" y2="'+gy+'" stroke="#e8e8e8" stroke-width="1"/>');
-      var lbl = tv>=1000 ? '$'+(tv/1000).toFixed(1)+'k' : '$'+tv;
-      out.push('<text x="'+(lpad-5)+'" y="'+(gy+4)+'" text-anchor="end" font-size="9" fill="#bbb">'+lbl+'</text>');
+    var cd=MONTHLY_DETAIL.slice().reverse();
+    var maxV=0;
+    cd.forEach(function(m){if((m.total||0)>maxV)maxV=m.total;});
+    if(!maxV)maxV=3000;
+    var tickStep=maxV>3000?1000:500;
+    var tks=[];
+    for(var tv=0;tv<=maxV+tickStep;tv+=tickStep)tks.push(tv);
+    var H=200,W=24,gap=4,lp=40,bp=32,tP=16;
+    var sw=lp+(W+gap)*cd.length+8;
+    var svH=H+bp+tP;
+    var o=[];
+    o.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+sw+' '+svH+'" width="100%" style="display:block">');
+    tks.forEach(function(tv){
+      if(tv>maxV*1.05)return;
+      var gy=tP+H-Math.round(tv/maxV*H);
+      o.push('<line x1="'+lp+'" y1="'+gy+'" x2="'+(sw-4)+'" y2="'+gy+'" stroke="#ebebeb" stroke-width="1"/>');
+      if(tv>0){var lb=tv>=1000?'$'+(tv/1000).toFixed(0)+'k':'$'+tv;o.push('<text x="'+(lp-4)+'" y="'+(gy+4)+'" text-anchor="end" font-size="9" fill="#ccc">'+lb+'</text>');}
     });
-
-    // Bars
+    o.push('<line x1="'+lp+'" y1="'+(tP+H)+'" x2="'+(sw-4)+'" y2="'+(tP+H)+'" stroke="#ddd" stroke-width="1.5"/>');
     cd.forEach(function(m,i){
-      if(!m.total) return;
-      var bx = lpad + i*(W+gap);
-      var sh = Math.round(Math.max(0,m.soup||0)/rng*H);
-      var lh = Math.round(Math.max(0,m.salad||0)/rng*H);
-      var bh = Math.round(Math.max(0,(m.bakery||0)+(m.misc||0))/rng*H);
-      var dh = Math.round(Math.max(0,m.delivery||0)/rng*H);
-      var totalBarH = sh+lh+bh+dh;
-      var by = tpad + H; // bottom of chart area
-      var sy = by;
-
-      if(sh>0){ sy-=sh; out.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+sh+'" fill="#1B3D1C" rx="2"/>'); }
-      if(lh>0){ sy-=lh; out.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+lh+'" fill="#7FAF6E" rx="2"/>'); }
-      if(bh>0){ sy-=bh; out.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+bh+'" fill="#D4943A" rx="2"/>'); }
-      if(dh>0){ sy-=dh; out.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+dh+'" fill="#1d4ed8" rx="2"/>'); }
-
-      // Value label — inside bar if tall, above if short
-      var topOfBar = sy; // y position of bar top
-      var lbl = '$'+(m.total/1000).toFixed(1)+'k';
-      var ly, lcolor;
-      if(totalBarH >= 18){
-        ly = topOfBar + 12; lcolor = '#fff';
-      } else {
-        ly = Math.max(tpad+10, topOfBar - 4); lcolor = '#444';
-      }
-      out.push('<text x="'+(bx+W/2)+'" y="'+ly+'" text-anchor="middle" font-size="8" font-weight="bold" fill="'+lcolor+'">'+lbl+'</text>');
-
-      // X-axis labels
-      var parts = (m.m||'').split("'");
-      var xc = bx + W/2;
-      out.push('<text x="'+xc+'" y="'+(tpad+H+14)+'" text-anchor="middle" font-size="8" fill="#888">'+((parts[0]||'').trim())+'</text>');
-      out.push('<text x="'+xc+'" y="'+(tpad+H+24)+'" text-anchor="middle" font-size="8" fill="#aaa">'+(parts[1]?"'"+parts[1]:'')+'</text>');
+      if(!m.total)return;
+      var bx=lp+i*(W+gap);
+      var s2=Math.round(Math.max(0,m.soup||0)/maxV*H);
+      var l2=Math.round(Math.max(0,m.salad||0)/maxV*H);
+      var b2=Math.round(Math.max(0,(m.bakery||0)+(m.misc||0))/maxV*H);
+      var d2=Math.round(Math.max(0,m.delivery||0)/maxV*H);
+      var tot=s2+l2+b2+d2;
+      var by=tP+H,sy=by;
+      if(s2>0){sy-=s2;o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+s2+'" fill="#1B3D1C" rx="2"/>');}  
+      if(l2>0){sy-=l2;o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+l2+'" fill="#7FAF6E" rx="2"/>');}  
+      if(b2>0){sy-=b2;o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+b2+'" fill="#D4943A" rx="2"/>');}  
+      if(d2>0){sy-=d2;o.push('<rect x="'+bx+'" y="'+sy+'" width="'+W+'" height="'+d2+'" fill="#1d4ed8" rx="2"/>');}  
+      var lb2='$'+(m.total/1000).toFixed(1)+'k';
+      var ly,lc;
+      if(tot>=20){ly=sy+13;lc='#fff';}else{ly=Math.max(tP+10,sy-3);lc='#444';}
+      o.push('<text x="'+(bx+W/2)+'" y="'+ly+'" text-anchor="middle" font-size="8.5" font-weight="bold" fill="'+lc+'">'+lb2+'</text>');
+      var pts=(m.m||'').split("'");
+      var xc=bx+W/2;
+      o.push('<text x="'+xc+'" y="'+(tP+H+13)+'" text-anchor="middle" font-size="8" fill="#999">'+((pts[0]||'').trim())+'</text>');
+      o.push('<text x="'+xc+'" y="'+(tP+H+23)+'" text-anchor="middle" font-size="8" fill="#bbb">'+(pts[1]?String.fromCharCode(39)+pts[1]:'')+'</text>');
     });
-
-    out.push('</svg>');
-    rc.innerHTML = out.join('');
-    rc.style.height = 'auto';
+    o.push('</svg>');
+    rc.innerHTML=o.join('');
+    rc.style.height='auto';
   }
 }
-
 function buildOrders(){
   var localOrders=[];
   try{localOrders=JSON.parse(localStorage.getItem('submitted_orders')||'[]');}catch(e){}
