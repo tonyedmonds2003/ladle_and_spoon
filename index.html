@@ -437,13 +437,13 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
 <!-- ── HOME ── -->
 <div class="view active" id="v-home">
   <div class="hero">
-    <div class="wkt">WEEK OF APR 7, 2026</div>
+    <div class="wkt">WEEK OF APR 27, 2026</div>
     <h1>This week's menu<br>is <em>live!</em></h1>
     <p>Fresh soups &amp; salads made with love.<br>Order by Friday 6 PM · Delivered Monday.</p>
   </div>
   <div class="dl">
     <span style="font-size:26px">⏰</span>
-    <div class="dlt"><strong>Order Deadline</strong><span>Friday, April 10 · 6:00 PM</span></div>
+    <div class="dlt"><strong>Order Deadline</strong><span>Friday, May 1 · 6:00 PM</span></div>
     <div class="dlc"><b id="cdown">--</b><span>remaining</span></div>
   </div>
   <div class="banner sub" onclick="if(typeof sw!=='undefined')sw('sub',$'nav-sub')">
@@ -804,7 +804,7 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
         </table>
       </div>
     </div>
-    <div class="ccrd" style="overflow:visible;padding-top:0"><h3>Revenue Chart</h3>
+    <div class="ccrd" style="overflow:visible;margin-top:8px;clear:both"><h3>Revenue Chart</h3>
       <div style="display:flex;gap:12px;font-size:10px;margin-bottom:8px;flex-wrap:wrap">
         <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--f);display:inline-block;border-radius:2px"></span>Soup</span>
         <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--sg);display:inline-block;border-radius:2px"></span>Salad</span>
@@ -2373,14 +2373,9 @@ function updateKPICards(data) {
         // Payment split from live orders
     var venmoOrds = orders.filter(function(o){ return o.pay==='venmo'; });
     var cashOrds  = orders.filter(function(o){ return o.pay==='cash';  });
-    // Calculate food subtotals per payment type
-    var venmoFood = venmoOrds.reduce(function(s,o){ return s+(parseInt((o.tot||'0').replace(/[^0-9]/g,''))||0); }, 0);
-    var cashFood  = cashOrds.reduce(function(s,o){  return s+(parseInt((o.tot||'0').replace(/[^0-9]/g,''))||0); }, 0);
-    var totalFood = venmoFood + cashFood || 1;
-    var weekTotal = weekRev || (venmoFood + cashFood + orders.length * 5);
-    // Split weekRevenue proportionally by food total, then each gets their delivery fees
-    var venmoAmt  = Math.round(venmoFood + venmoOrds.length * 5);
-    var cashAmt   = Math.round(cashFood  + cashOrds.length  * 5);
+    // Split week revenue proportionally by order count so totals reconcile
+    var venmoAmt = orders.length > 0 ? Math.round(weekRev * venmoOrds.length / orders.length) : 0;
+    var cashAmt  = orders.length > 0 ? Math.round(weekRev * cashOrds.length  / orders.length) : 0;
     if($('ps-venmo-cnt')) $('ps-venmo-cnt').textContent = venmoOrds.length;
     if($('ps-cash-cnt'))  $('ps-cash-cnt').textContent  = cashOrds.length;
     if($('ps-venmo-amt')) $('ps-venmo-amt').textContent = '$'+venmoAmt;
@@ -2492,7 +2487,21 @@ function setOS(os,btn){
   btn.classList.add('active');
 }
 function countdown(){
-  const dead = new Date('2026-04-10T18:00:00');
+  // Calculate this week's Friday deadline dynamically
+  const now = new Date();
+  const dow = now.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  const daysToFriday = dow <= 5 ? 5 - dow : 6; // days until Friday
+  const dead = new Date(now);
+  dead.setDate(now.getDate() + daysToFriday);
+  dead.setHours(18,0,0,0);
+  // Update week label in hero
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
+  const wktEl = document.querySelector('.wkt');
+  if(wktEl) wktEl.textContent = 'WEEK OF ' + mon.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}).toUpperCase();
+  // Update deadline text
+  const dlEl = document.querySelector('.dlt span');
+  if(dlEl) dlEl.textContent = dead.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}) + ' · 6:00 PM';
   const u = ()=>{
     const df = dead-new Date();
     if(df<=0){$('cdown').textContent='Closed';return;}
@@ -3021,7 +3030,8 @@ function buildMonthly(){
       svg+='<text x="'+(x+chartW_bar/2)+'" y="'+(topPad+chartH+21)+'" text-anchor="middle" font-size="8" fill="#999" font-family="sans-serif">'+parts[1]+'</text>';
       // Total label on top
       if(m.total>0){
-        svg+='<text x="'+(x+chartW_bar/2)+'" y="'+Math.max(14,stackY-4)+'" text-anchor="middle" font-size="8" font-weight="bold" fill="#333" font-family="sans-serif">$'+(m.total/1000).toFixed(1)+'k</text>';
+        var valY = Math.max(topPad+10, stackY-4);
+      svg+='<text x="'+(x+chartW_bar/2)+'" y="'+valY+'" text-anchor="middle" font-size="8" font-weight="bold" fill="'+(valY<=topPad+10?'#333':'#333')+'" font-family="sans-serif">$'+(m.total/1000).toFixed(1)+'k</text>';
       }
     });
 
