@@ -447,11 +447,11 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
     <div class="dlt"><strong>Order Deadline</strong><span>Friday, May 1 · 6:00 PM</span></div>
     <div class="dlc"><b id="cdown">--</b><span>remaining</span></div>
   </div>
-  <div class="banner sub" onclick="if(typeof sw!=='undefined')sw('sub',$'nav-sub')">
+  <div class="banner sub" onclick="if(typeof sw!=='undefined')sw('sub',$('nav-sub'))">
     <div class="btag">SUBSCRIBE &amp; SAVE</div>
     <h3>Weekly Soup Plans 📦</h3>
     <p>Save 10% every week · Pause anytime · Swap between week's soups</p>
-    <button onclick="event.stopPropagation();if(typeof sw!=='undefined')sw('sub',$'nav-sub')">See Plans</button>
+    <button onclick="event.stopPropagation();if(typeof sw!=='undefined')sw('sub',$('nav-sub'))">See Plans</button>
   </div>
   <div class="sh"><div class="st">Notifications</div></div>
 
@@ -2489,7 +2489,7 @@ function sw(v, btn){
   }
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.bn').forEach(e=>e.classList.remove('active'));
-  $('v-'+v).classList.add('active');
+  var _vEl=$('v-'+v); if(_vEl) _vEl.classList.add('active'); else return;
   if(btn) btn.classList.add('active');
   $('cpb').style.display = v==='admin' ? 'none' : 'flex';
   if(v === 'admin'){
