@@ -2242,8 +2242,8 @@ function applyAdminData(data){
 
     // Update monthly chart — data now includes full MONTHLY_DETAIL structure
     if(data.monthly && data.monthly.length > 0){
-      MONTHLY        = data.monthly; // simple {m, r} for bar chart
-      MONTHLY_DETAIL = data.monthly; // full detail for monthly table
+      MONTHLY        = data.monthly; // chronological for bar chart
+      MONTHLY_DETAIL = data.monthly.slice().reverse(); // newest first for table
       buildDash();
       buildMonthly();
     }
@@ -2904,7 +2904,12 @@ function buildMonthly(){
   if(rc){
     var chartData=MONTHLY_DETAIL.slice().reverse(); // chronological order
     var maxVal=Math.max.apply(null,chartData.map(function(m){return m.total;}));
-    var yTicks=[0,500,1000,1500,2000,2500,3000,3500];
+    // Dynamic y-axis based on data range
+    var minVal = Math.min.apply(null, chartData.filter(function(m){return m.total>0;}).map(function(m){return m.total;}));
+    var step = maxVal > 2500 ? 500 : 250;
+    var yStart = Math.floor((minVal * 0.9) / step) * step;
+    var yTicks = [];
+    for(var t = yStart; t <= maxVal + step; t += step) yTicks.push(t);
     var chartH=180; var chartW_bar=22; var gap=4;
     var leftPad=38; var bottomPad=36; var topPad=10;
     var totalW=leftPad+(chartW_bar+gap)*chartData.length+8;
@@ -2915,7 +2920,7 @@ function buildMonthly(){
     // Y-axis grid lines and labels
     yTicks.forEach(function(t){
       if(t>maxVal+200) return;
-      var y=topPad+chartH-(t/maxVal*chartH);
+      var y=topPad+chartH-((t-yStart)/range*chartH);
       svg+='<line x1="'+leftPad+'" y1="'+y+'" x2="'+(totalW-4)+'" y2="'+y+'" stroke="#ddd" stroke-width="1"/>';
       svg+='<text x="'+(leftPad-4)+'" y="'+(y+4)+'" text-anchor="end" font-size="8" fill="#999" font-family="sans-serif">$'+
         (t>=1000?(t/1000).toFixed(1)+'k':t)+'</text>';
@@ -2924,10 +2929,10 @@ function buildMonthly(){
     // Bars
     chartData.forEach(function(m,i){
       var x=leftPad+i*(chartW_bar+gap);
-      var soupH =m.total>0?Math.round(m.soup  /maxVal*chartH):0;
-      var saladH=m.total>0?Math.round(m.salad /maxVal*chartH):0;
-      var bakH  =m.total>0?Math.round((m.bakery+m.misc)/maxVal*chartH):0;
-      var delH  =m.total>0?Math.round(m.delivery/maxVal*chartH):0;
+      var range=maxVal-yStart||1; var soupH =m.total>0?Math.round(m.soup  /range*chartH):0;
+      var saladH=m.total>0?Math.round(m.salad /range*chartH):0;
+      var bakH  =m.total>0?Math.round((m.bakery+m.misc)/range*chartH):0;
+      var delH  =m.total>0?Math.round(m.delivery/range*chartH):0;
       var baseY =topPad+chartH;
       // Stack from bottom: soup (darkest), salad, bakery, delivery
       var stackY=baseY;
