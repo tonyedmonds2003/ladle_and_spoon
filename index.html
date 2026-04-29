@@ -1629,6 +1629,7 @@ function applyCoupon(){
   }
 }
 function submitOrder(){
+  try{
   // Calculate total from cart
   var food=cart.reduce(function(s,i){return s+i.sz.p*i.qty;},0);
   var del=mySub?3:5;
@@ -1699,6 +1700,7 @@ function submitOrder(){
       mode:    'no-cors'  // Apps Script doesn't need CORS preflight
     }).catch(err => console.log('Sheet sync failed (offline?):', err));
   }
+  } catch(err) { alert('Order error: ' + err.message + ' | ' + err.stack.split('\n')[0]); }
 }
 
 function showOrderConfirmation(o){
