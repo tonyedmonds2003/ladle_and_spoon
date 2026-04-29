@@ -2302,6 +2302,7 @@ function applyAdminData(data){
 }
 
 function updateKPICards(data) {
+  console.log('updateKPICards called, monthly:', (data.monthly||[]).length, 'weekRev:', data.weekRevenue);
   try {
     var orders  = data.orders  || [];
     var monthly = data.monthly || [];
@@ -2335,7 +2336,8 @@ function updateKPICards(data) {
       return (!best || v > (parseFloat(best.total)||parseFloat(best.r)||0)) ? m : best;
     }, null);
 
-    console.log('KPI values — weekRev:', weekRev, 'yearlyRev:', yearlyRev, 'months:', monthly.length, 'orders:', orders.length);
+    console.log('KPI DOM update — weekRev:', weekRev, 'yearlyRev:', yearlyRev, 'kpi-el:', $('kpi-week-rev') ? 'FOUND' : 'NOT FOUND');
+    console.log('MONTHLY array now has', MONTHLY.length, 'items, first:', MONTHLY[0]&&MONTHLY[0].m);
 
     if ($('kpi-week-rev'))     $('kpi-week-rev').textContent     = '$' + Math.round(weekRev).toLocaleString();
     if ($('kpi-week-orders'))  $('kpi-week-orders').textContent  = weekOrds + ' orders this week';
