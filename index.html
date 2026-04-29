@@ -1715,7 +1715,7 @@ function showOrderConfirmation(o){
         <div><strong>Total:</strong> $${o.total.toFixed(2)}</div>
       </div>
       <div style="background:#fef3c7;border-radius:10px;padding:12px;font-size:13px;margin-bottom:18px">
-        ${o.pay==='venmo'?'<strong>Please send $'+o.total.toFixed(2)+' via Venmo to @LadleAndSpoon</strong><br><span style="font-size:11px;color:var(--t3)">Use your name as the note</span>':'<strong>Please have $'+o.total.toFixed(2)+' cash ready for delivery</strong>'}
+        ${o.payment==='venmo'?'<strong>Please send $'+o.total.toFixed(2)+' via Venmo to @LadleAndSpoon</strong><br><span style="font-size:11px;color:var(--t3)">Use your name as the note</span>':'<strong>Please have $'+o.total.toFixed(2)+' cash ready for delivery</strong>'}
       </div>
       <button class="bp" onclick="closeOv('ov-cart')">Done ✓</button>
     </div>`;
@@ -2213,7 +2213,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v1");
+  console.log("APP VERSION: 2026-04-29-v3");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
@@ -2467,6 +2467,7 @@ function applyAdminData(data){
     console.log('Admin data refreshed — ' + new Date().toLocaleTimeString());
   } catch(e) {
     console.error('applyAdminData error:', e);
+    toast('⚠️ Dashboard error: ' + e.message);
   }
 }
 
