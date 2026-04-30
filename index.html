@@ -581,6 +581,23 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
 
   <div class="asec" id="adm-menu">
     <div class="sh"><div class="st" id="menu-week-title">Week of Apr 7</div></div>
+    <!-- This Week's Menu Builder -->
+    <div class="ccrd" style="border:2px solid var(--f)">
+      <h3 style="color:var(--f)">🍜 This Week's Menu</h3>
+      <p style="font-size:12px;color:var(--t3);margin-bottom:14px">Select up to 3 soups and 2 salads. These will appear on the customer menu when you publish.</p>
+      <div id="menu-builder-soups" style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🥣 Soups (up to 3)</div>
+        <div id="menu-soup-slots" style="display:flex;flex-direction:column;gap:8px"></div>
+        <button onclick="addMenuSlot('soup')" style="margin-top:8px;padding:6px 12px;border-radius:8px;border:1.5px dashed var(--sg);background:transparent;color:var(--f);font-size:12px;font-weight:700;cursor:pointer">+ Add Soup</button>
+      </div>
+      <div id="menu-builder-salads">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🥗 Salads (up to 2)</div>
+        <div id="menu-salad-slots" style="display:flex;flex-direction:column;gap:8px"></div>
+        <button onclick="addMenuSlot('salad')" style="margin-top:8px;padding:6px 12px;border-radius:8px;border:1.5px dashed var(--sg);background:transparent;color:var(--f);font-size:12px;font-weight:700;cursor:pointer">+ Add Salad</button>
+      </div>
+      <button class="bp" style="margin-top:16px" onclick="saveMenuToSheet()">💾 Save Menu to Sheet</button>
+      <div id="menu-save-status" style="font-size:12px;color:var(--t3);margin-top:8px"></div>
+    </div>
     <!-- Featured items for subscription plan defaults -->
     <div class="ccrd" style="background:var(--sgl);border:1.5px solid var(--sg)">
       <h3 style="color:var(--f)">⭐ Subscription Plan Defaults</h3>
@@ -2287,7 +2304,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v21");
+  console.log("APP VERSION: 2026-04-29-v22");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
@@ -2667,6 +2684,7 @@ function sw(v, btn){
     isAdmin = true;
     // Fetch fresh data from Sheet when admin opens
     refreshAdminData();
+    setTimeout(initMenuBuilder, 100);
   }
 }
 function toggleMode(){
@@ -3407,6 +3425,110 @@ function buildOrders(){
       +(o.notes?'<div style="font-size:11px;color:var(--t3);margin-top:4px;font-style:italic">💬 '+o.notes+'</div>':'')
       +'</div>';
   }).join('');
+}
+
+
+// ════ MENU BUILDER ════
+var _menuSelections = { soups: [], salads: [] };
+
+function initMenuBuilder(){
+  // Load saved selections from localStorage
+  try{ _menuSelections = JSON.parse(localStorage.getItem('menu_builder')||'{"soups":[],"salads":[]}'); }catch(e){}
+  // Render initial slots
+  var soupSlots = $('menu-soup-slots');
+  var saladSlots = $('menu-salad-slots');
+  if(!soupSlots || !saladSlots) return;
+  soupSlots.innerHTML = '';
+  saladSlots.innerHTML = '';
+  // Add saved soup slots
+  var soups = _menuSelections.soups.length ? _menuSelections.soups : [''];
+  soups.forEach(function(val){ _addSlotHTML('soup', val); });
+  var salads = _menuSelections.salads.length ? _menuSelections.salads : [''];
+  salads.forEach(function(val){ _addSlotHTML('salad', val); });
+}
+
+function _addSlotHTML(type, selectedId){
+  var container = $(type === 'soup' ? 'menu-soup-slots' : 'menu-salad-slots');
+  if(!container) return;
+  var maxItems = type === 'soup' ? 3 : 2;
+  var current = container.querySelectorAll('.menu-slot').length;
+  if(current >= maxItems){ toast('Max ' + maxItems + ' ' + type + 's'); return; }
+  var idx = current;
+  var options = ALL_SOUPS
+    .filter(function(s){ return type === 'soup' ? s.cat === 'soup' : s.cat === 'salad'; })
+    .sort(function(a,b){ return (b.rev||0)-(a.rev||0); })
+    .map(function(s){
+      var sel = s.id === selectedId ? ' selected' : '';
+      return '<option value="'+s.id+'"'+sel+'>'+s.em+' '+s.n+'</option>';
+    }).join('');
+  var div = document.createElement('div');
+  div.className = 'menu-slot';
+  div.style.cssText = 'display:flex;align-items:center;gap:8px';
+  div.innerHTML = (
+    '<select style="flex:1;padding:9px;border-radius:10px;border:2px solid var(--bd);font-size:14px" '
+    +'onchange="_saveMenuSelections()" data-type="'+type+'" data-idx="'+idx+'">'
+    +'<option value="">Select '+type+'...</option>'+options+'</select>'
+    +'<button onclick="_removeSlot(this)" style="padding:6px 10px;border-radius:8px;border:none;background:#fee2e2;color:#e53e3e;font-size:14px;cursor:pointer">✕</button>'
+  );
+  container.appendChild(div);
+}
+
+function addMenuSlot(type){
+  _addSlotHTML(type, '');
+}
+
+function _removeSlot(btn){
+  btn.parentElement.remove();
+  _saveMenuSelections();
+}
+
+function _saveMenuSelections(){
+  var soups = [], salads = [];
+  document.querySelectorAll('#menu-soup-slots select').forEach(function(s){ if(s.value) soups.push(s.value); });
+  document.querySelectorAll('#menu-salad-slots select').forEach(function(s){ if(s.value) salads.push(s.value); });
+  _menuSelections = {soups: soups, salads: salads};
+  try{ localStorage.setItem('menu_builder', JSON.stringify(_menuSelections)); }catch(e){}
+}
+
+function saveMenuToSheet(){
+  _saveMenuSelections();
+  var soups  = _menuSelections.soups.map(function(id){ return ALL_SOUPS.find(function(s){return s.id===id;}); }).filter(Boolean);
+  var salads = _menuSelections.salads.map(function(id){ return ALL_SOUPS.find(function(s){return s.id===id;}); }).filter(Boolean);
+  if(!soups.length){ toast('Please select at least one soup'); return; }
+  var status = $('menu-save-status');
+  if(status) status.textContent = '⏳ Saving to Sheet...';
+  var menuData = {
+    type: 'save_menu',
+    soups: soups.map(function(s){ return {id:s.id, n:s.n, em:s.em}; }),
+    salads: salads.map(function(s){ return {id:s.id, n:s.n, em:s.em}; })
+  };
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify(menuData),
+    headers: { 'Content-Type': 'text/plain' }
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d.success){
+      if(status) status.textContent = '✅ Menu saved! ' + soups.length + ' soups, ' + salads.length + ' salads.';
+      // Update MENU_ITEMS for customer view
+      MENU_ITEMS = soups.concat(salads).map(function(s, i){
+        var isSalad = s.cat === 'salad';
+        return {id:'m'+(i+1), cat:s.cat, em:s.em, n:s.n, desc:s.desc||'',
+          tags:[], soldout:false, al:[], soupId:s.id,
+          sz: isSalad ? [{l:'Salad',o:'reg',p:15}] : [{l:'Pint',o:'16oz',p:8},{l:'Quart',o:'32oz',p:15}]};
+      });
+      buildMenu();
+      toast('✅ Menu saved to Sheet!');
+    } else {
+      if(status) status.textContent = '⚠️ ' + (d.error||'Save failed');
+      toast('⚠️ ' + (d.error||'Save failed'));
+    }
+  })
+  .catch(function(err){
+    if(status) status.textContent = '⚠️ ' + err.message;
+    toast('⚠️ ' + err.message);
+  });
 }
 
 function buildWkMenu(){(function(){var _e=$('wkml');if(_e)_e.innerHTML=WKMENU.map(m=>`<div class="wmc"><div class="wme">${m.em}</div><div class="wmi"><strong>${m.n}</strong><span>${m.sz} · ${m.rev} so far</span></div><div class="wmact"><button class="wmb mv" onclick="toast('Swap item')">↔</button><button class="wmb rm" onclick="toast('Removed')">✕</button></div></div>`).join('');})();}
