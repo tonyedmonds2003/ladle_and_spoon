@@ -2214,7 +2214,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v6");
+  console.log("APP VERSION: 2026-04-29-v7");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
@@ -2372,6 +2372,11 @@ function applyAdminData(data){
           last: s.last,
           last_date: (function(){
             var d = s.last_date || '';
+            // Fall back to ALL_SOUPS hardcoded last_date
+            if(!d){
+              var as = ALL_SOUPS.find(function(x){ return x.n.toLowerCase()===s.n.toLowerCase(); });
+              if(as && as.last_date) d = as.last_date;
+            }
             if(!d) return '';
             var parts = d.split('/');
             var months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
