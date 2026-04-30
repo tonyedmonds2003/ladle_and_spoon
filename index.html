@@ -575,7 +575,7 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
   </div>
 
   <div class="asec" id="adm-orders">
-    <div class="sh"><div class="st" id="ord-week-title">Week of Apr 7 · 23 Orders · $714</div><span class="sl" onclick="toast('Exported!')">Export CSV</span></div>
+    <div class="sh"><div class="st" id="ord-week-title">Week of Apr 7 · 23 Orders · $714</div><div style="display:flex;gap:8px"><span class="sl" onclick="clearLocalOrders()" style="color:#e53e3e">Clear App Orders</span><span class="sl" onclick="toast('Exported!')">Export CSV</span></div></div>
     <div id="ordl"></div>
   </div>
 
@@ -2237,7 +2237,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v14");
+  console.log("APP VERSION: 2026-04-29-v15");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
@@ -2404,8 +2404,11 @@ function applyAdminData(data){
             return as ? (as.last_date||'') : '';
           })(),
           last_date: (function(){
-            var d = s.last_date || '';
+            var d = (s.last_date || '').toString();
             if(!d) return '';
+            // Already formatted nicely (e.g. 'Nov 11, 2025')
+            if(/^[A-Z][a-z]+ \d/.test(d)) return d;
+            // M/d/yy format
             var parts = d.split('/');
             var months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
             if(parts.length === 3) return (months[parseInt(parts[0])]||parts[0]) + ' ' + parts[1] + " '" + parts[2];
@@ -3322,6 +3325,13 @@ function buildMonthly(){
   }
 }
 
+function clearLocalOrders(){
+  if(!confirm('Clear all app-submitted orders from this device? This only affects what you see here, not the Google Sheet.')) return;
+  try{ localStorage.removeItem('submitted_orders'); }catch(e){}
+  buildOrders();
+  toast('App orders cleared');
+}
+
 function buildOrders(){
   var localOrders=[];
   try{localOrders=JSON.parse(localStorage.getItem('submitted_orders')||'[]');}catch(e){}
@@ -3333,16 +3343,16 @@ function buildOrders(){
     var stClass=o.status==='delivered'?'delivered':o.status==='confirmed'?'confirmed':'new';
     var stLabel=o.status==='delivered'?'Delivered':o.status==='confirmed'?'Confirmed':'New';
     return '<div class="oc">'
-      +'<div class="ohd"><strong>'+o.n+(o.id?' · '+o.id:'')+'</strong>'
+      +'<div class="ohd"><strong>'+(o.name||o.n||'Unknown')+(o.id?' · '+o.id:'')+'</strong>'
       +'<div style="display:flex;gap:6px;align-items:center">'
       +(isLocal?'<span style="font-size:10px;background:#dcfce7;color:#166534;border-radius:4px;padding:2px 6px;font-weight:700">App Order</span>':'')
       +'<span class="sb '+stClass+'">'+stLabel+'</span>'
-      +(o.pay?'<span style="font-size:11px;font-weight:700;color:'+(o.pay==='venmo'?'#1d4ed8':'#555')+'">'+(o.pay==='venmo'?'💙 Venmo':'💵 Cash')+'</span>':'')
+      +((o.pay||o.payment)?'<span style="font-size:11px;font-weight:700;color:'+((o.pay||o.payment)==='venmo'?'#1d4ed8':'#555')+'">'+(((o.pay||o.payment)==='venmo')?'💙 Venmo':'💵 Cash')+'</span>':'')
       +'</div></div>'
-      +'<div class="oitm">'+(o.it||o.items||'')+'</div>'
+      +'<div class="oitm">'+(o.it||(Array.isArray(o.items)?o.items.map(function(i){return i.name+' '+i.size+' x'+i.qty;}).join(', '):o.items)||'')+'</div>'
       +'<div class="oft">'
-      +'<span class="oad">📍 '+(o.addr||'')+'</span>'
-      +'<span class="otl">'+(o.tot||o.total||'?')+'</span>'
+      +'<span class="oad">📍 '+(o.addr||o.address||'')+'</span>'
+      +'<span class="otl">'+(o.tot?'$'+o.tot:(o.total?'$'+o.total.toFixed(2):'?'))+'</span>'
       +'</div>'
       +(o.notes?'<div style="font-size:11px;color:var(--t3);margin-top:4px;font-style:italic">💬 '+o.notes+'</div>':'')
       +'</div>';
