@@ -1716,11 +1716,10 @@ function submitOrder(){
 
   // POST to Google Apps Script in background (non-blocking)
   if(APPS_SCRIPT_URL && APPS_SCRIPT_URL !== 'PASTE_YOUR_URL_HERE'){
-    fetch(APPS_SCRIPT_URL, {
-      method:  'POST',
-      body:    JSON.stringify(orderData),
-      mode:    'no-cors'  // Apps Script doesn't need CORS preflight
-    }).catch(err => console.log('Sheet sync failed (offline?):', err));
+    // Send as GET with base64-encoded data to avoid CORS body stripping
+    var _od = btoa(unescape(encodeURIComponent(JSON.stringify(orderData))));
+    fetch(APPS_SCRIPT_URL + '?type=order&data=' + encodeURIComponent(_od))
+      .catch(err => console.log('Sheet sync failed (offline?):', err));
   }
 }
 
@@ -2237,7 +2236,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v17");
+  console.log("APP VERSION: 2026-04-29-v18");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
