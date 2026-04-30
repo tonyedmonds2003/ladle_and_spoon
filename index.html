@@ -1610,13 +1610,13 @@ function suggestNextWeek(){
   top3soups.forEach(function(s,i){
     html+='<div style="background:#fff;border-radius:8px;padding:8px 10px;border:1px solid var(--bd)">';
     html+='<div style="font-weight:700">🥣 Soup '+(i+1)+': '+s.n+'</div>';
-    html+='<div style="font-size:10px;color:var(--t3)">$'+s.avg+'/wk avg · Last: '+(s.last_date||s._as_date||'—')+' · Score: '+Math.round(s._score)+'</div>';
+    html+='<div style="font-size:10px;color:var(--t3)">$'+s.avg+'/wk avg · Last: '+(_getLD(s)||'—')+' · Score: '+Math.round(s._score)+'</div>';
     html+='</div>';
   });
   top2salads.forEach(function(s,i){
     html+='<div style="background:#fff;border-radius:8px;padding:8px 10px;border:1px solid var(--bd)">';
     html+='<div style="font-weight:700">🥗 Salad '+(i+1)+': '+s.n+'</div>';
-    html+='<div style="font-size:10px;color:var(--t3)">$'+s.avg+'/wk avg · Last: '+(s.last_date||s._as_date||'—')+'</div>';
+    html+='<div style="font-size:10px;color:var(--t3)">$'+s.avg+'/wk avg · Last: '+(_getLD(s)||'—')+'</div>';
     html+='</div>';
   });
   html+='</div>';
@@ -2237,7 +2237,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v13");
+  console.log("APP VERSION: 2026-04-29-v14");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
