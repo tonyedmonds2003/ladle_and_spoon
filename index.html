@@ -2213,7 +2213,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v3");
+  console.log("APP VERSION: 2026-04-29-v4");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
@@ -2448,20 +2448,37 @@ function applyAdminData(data){
       buildPhotoUploader();
     }
 
-    // Update KPI dashboard cards - direct update as safety net
+    // Update ALL 8 KPI boxes directly from live data
     try {
-      if(data.weekRevenue !== undefined && $('kpi-week-rev')) {
-        $('kpi-week-rev').textContent = '$' + Math.round(data.weekRevenue).toLocaleString();
-        $('kpi-week-orders').textContent = (data.weekOrders||0) + ' orders this week';
-      }
-      var yr = (data.monthly||[]).reduce(function(s,m){return s+(parseFloat(m.total)||0);},0);
-      if(yr > 0 && $('kpi-yearly-rev')) {
-        $('kpi-yearly-rev').textContent = '$' + Math.round(yr).toLocaleString();
-        $('kpi-yearly-weeks').textContent = (data.monthly||[]).length + ' months tracked';
-        var avg = yr / ((data.monthly||[]).length || 1);
-        $('kpi-avg-weekly').textContent = '$' + Math.round(avg).toLocaleString();
-      }
-    } catch(e2) { console.log('KPI direct update error:', e2); }
+      var _orders  = data.orders  || [];
+      var _monthly = data.monthly || [];
+      var _weekRev = data.weekRevenue || 0;
+      var _weekOrd = data.weekOrders  || _orders.length;
+
+      // Row 1: This Week + Yearly Revenue
+      if($('kpi-week-rev'))    $('kpi-week-rev').textContent    = '$' + Math.round(_weekRev).toLocaleString();
+      if($('kpi-week-orders')) $('kpi-week-orders').textContent = _weekOrd + ' orders this week';
+      var _yr = _monthly.reduce(function(s,m){return s+(parseFloat(m.total)||0);},0);
+      if($('kpi-yearly-rev'))   $('kpi-yearly-rev').textContent   = '$' + Math.round(_yr).toLocaleString();
+      if($('kpi-yearly-weeks')) $('kpi-yearly-weeks').textContent = _monthly.length + ' months tracked';
+
+      // Row 2: Avg Weekly + Subscribers
+      var _weeks = (data.weekCount > 10 ? data.weekCount : 0) || Math.round(_monthly.length * 4.33) || 1;
+      if($('kpi-avg-weekly')) $('kpi-avg-weekly').textContent = '$' + Math.round(_yr / _weeks).toLocaleString();
+      var _best = _monthly.reduce(function(b,m){return (m.total||0)>(b.total||0)?m:b;}, {});
+      if($('kpi-avg-best') && _best.m) $('kpi-avg-best').textContent = 'Best: $' + Math.round(_best.total||0).toLocaleString() + ' (' + _best.m + ')';
+
+      // Payment Split (4 boxes)
+      var _venmo = _orders.filter(function(o){return o.pay==='venmo';});
+      var _cash  = _orders.filter(function(o){return o.pay==='cash';});
+      var _vAmt  = _orders.length > 0 ? Math.round(_weekRev * _venmo.length / _orders.length) : 0;
+      var _cAmt  = _orders.length > 0 ? Math.round(_weekRev * _cash.length  / _orders.length) : 0;
+      if($('ps-venmo-cnt')) $('ps-venmo-cnt').textContent = _venmo.length;
+      if($('ps-cash-cnt'))  $('ps-cash-cnt').textContent  = _cash.length;
+      if($('ps-venmo-amt')) $('ps-venmo-amt').textContent = '$' + _vAmt;
+      if($('ps-cash-amt'))  $('ps-cash-amt').textContent  = '$' + _cAmt;
+
+    } catch(e2) { console.error('KPI update error:', e2); }
     updateKPICards(data);
 
     console.log('Admin data refreshed — ' + new Date().toLocaleTimeString());
