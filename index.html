@@ -2214,7 +2214,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v9");
+  console.log("APP VERSION: 2026-04-29-v10");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
@@ -3476,6 +3476,28 @@ function buildSoupIntel(){
     var items=getSorted();
     var mx=items.reduce(function(m,s){return Math.max(m,s.rev);},1);
     var html='';
+    // Build name→last_date map from ALL_SOUPS for fallback
+    var _ldMap={};
+    ALL_SOUPS.forEach(function(a){
+      _ldMap[a.n.toLowerCase()]=a.last_date||'';
+      // Also index by key words for fuzzy match
+      a.n.toLowerCase().split(/\s+/).forEach(function(w){
+        if(w.length>4 && !_ldMap['_w_'+w]) _ldMap['_w_'+w]={date:a.last_date||'',name:a.n};
+      });
+    });
+    function _getLD(s){
+      if(s.last_date) return s.last_date;
+      if(s._as_date) return s._as_date;
+      var k=s.n.toLowerCase();
+      if(_ldMap[k]) return _ldMap[k];
+      // fuzzy: check each word of intel name against map
+      var words=k.split(/\s+/).filter(function(w){return w.length>4;});
+      for(var i=0;i<words.length;i++){
+        var hit=_ldMap['_w_'+words[i]];
+        if(hit) return hit.date;
+      }
+      return '';
+    }
     items.forEach(function(s,i){
       var barW=Math.round(s.rev/mx*100);
       var age=s.last_sort;
@@ -3484,7 +3506,7 @@ function buildSoupIntel(){
       html+='<div class="si-rank'+(i<3&&!sortAsc&&currentSort==='avg'?' top':'')+'">'+(i+1)+'</div>';
       html+='<div class="si-inf">';
       html+='<strong>'+s.n+'</strong>';
-      html+='<span style="font-size:11px;color:var(--t3)">'+s.cat+' &middot; '+s.weeks+' wk'+(s.weeks>1?'s':'')+' &middot; Last: <strong style="color:var(--f)">'+s.last_date+'</strong></span>';
+      html+='<span style="font-size:11px;color:var(--t3)">'+s.cat+' &middot; '+s.weeks+' wk'+(s.weeks>1?'s':'')+' &middot; Last: <strong style="color:var(--f)">'+_getLD(s)+'</strong></span>';
       html+='<div class="si-bar-w"><div class="si-bar-f" style="width:'+barW+'%;background:'+barColor+'"></div></div>';
       html+='</div>';
       html+='<div class="si-rev">';
