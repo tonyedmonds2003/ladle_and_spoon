@@ -2214,7 +2214,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v11");
+  console.log("APP VERSION: 2026-04-29-v12");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
@@ -3450,6 +3450,7 @@ let SOUP_INTEL = [
   {n:"Zucchini",cat:"Soup",rev:31,weeks:1,avg:31,last:31,last_date:"Aug 12, 2025",last_sort:20250812},
   {n:"Sopa De Fideo",cat:"Soup",rev:21,weeks:1,avg:21,last:21,last_date:"Apr 29, 2025",last_sort:20250429},
 ];
+const _SOUP_INTEL_ORIG = SOUP_INTEL.slice(); // snapshot before live data replaces it
 
 function buildSoupIntel(){
   var currentSort='avg';
@@ -3487,7 +3488,7 @@ function buildSoupIntel(){
     });
     // Snapshot of hardcoded SOUP_INTEL last_dates by name
     var _siSnap={};
-    SOUP_INTEL.forEach(function(x){ if(x.last_date) _siSnap[x.n.toLowerCase()]=x.last_date; });
+    _SOUP_INTEL_ORIG.forEach(function(x){ if(x.last_date) _siSnap[x.n.toLowerCase()]=x.last_date; });
     function _getLD(s){
       if(s.last_date) return s.last_date;
       if(s._as_date) return s._as_date;
