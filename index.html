@@ -2214,7 +2214,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v10");
+  console.log("APP VERSION: 2026-04-29-v11");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
@@ -3485,15 +3485,28 @@ function buildSoupIntel(){
         if(w.length>4 && !_ldMap['_w_'+w]) _ldMap['_w_'+w]={date:a.last_date||'',name:a.n};
       });
     });
+    // Snapshot of hardcoded SOUP_INTEL last_dates by name
+    var _siSnap={};
+    SOUP_INTEL.forEach(function(x){ if(x.last_date) _siSnap[x.n.toLowerCase()]=x.last_date; });
     function _getLD(s){
       if(s.last_date) return s.last_date;
       if(s._as_date) return s._as_date;
       var k=s.n.toLowerCase();
+      // Exact match in SOUP_INTEL snapshot
+      if(_siSnap[k]) return _siSnap[k];
+      // Fuzzy: find SOUP_INTEL entry whose words overlap with intel name
+      var words=k.split(/\s+/).filter(function(w){return w.length>3;});
+      var keys=Object.keys(_siSnap);
+      for(var j=0;j<keys.length;j++){
+        var kw=keys[j].split(/\s+/);
+        var overlap=words.filter(function(w){return kw.indexOf(w)>=0;}).length;
+        if(overlap>=Math.min(2,words.length)) return _siSnap[keys[j]];
+      }
+      // Fall back to _ldMap (ALL_SOUPS)
       if(_ldMap[k]) return _ldMap[k];
-      // fuzzy: check each word of intel name against map
-      var words=k.split(/\s+/).filter(function(w){return w.length>4;});
-      for(var i=0;i<words.length;i++){
-        var hit=_ldMap['_w_'+words[i]];
+      var words2=k.split(/\s+/).filter(function(w){return w.length>4;});
+      for(var i=0;i<words2.length;i++){
+        var hit=_ldMap['_w_'+words2[i]];
         if(hit) return hit.date;
       }
       return '';
