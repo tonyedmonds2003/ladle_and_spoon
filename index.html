@@ -1716,10 +1716,15 @@ function submitOrder(){
 
   // POST to Google Apps Script in background (non-blocking)
   if(APPS_SCRIPT_URL && APPS_SCRIPT_URL !== 'PASTE_YOUR_URL_HERE'){
-    // Send as GET with base64-encoded data to avoid CORS body stripping
-    var _od = btoa(unescape(encodeURIComponent(JSON.stringify(orderData))));
-    fetch(APPS_SCRIPT_URL + '?type=order&data=' + encodeURIComponent(_od))
-      .catch(err => console.log('Sheet sync failed (offline?):', err));
+    // POST as text/plain - simple request, no preflight, body arrives intact
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify(orderData),
+      headers: { 'Content-Type': 'text/plain' }
+    })
+    .then(function(r){ return r.text(); })
+    .then(function(t){ console.log('Order response:', t.slice(0,100)); })
+    .catch(function(err){ console.log('Order POST failed:', err.message); });
   }
 }
 
@@ -2236,7 +2241,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v18");
+  console.log("APP VERSION: 2026-04-29-v19");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
