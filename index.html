@@ -2314,7 +2314,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v25");
+  console.log("APP VERSION: 2026-04-29-v26");
   loadCustomItems();
   // Load any edited descriptions from localStorage
   try{
@@ -2342,7 +2342,7 @@ window.onload = () => {
         MENU_ITEMS = d.wkmenu.map(function(w,i){
           var isSal=(w.em||'').includes('\ud83e\udd57')||/salad/i.test(w.n||'');
           return {id:'m'+(i+1),cat:isSal?'salad':'soup',em:w.em||(isSal?'\ud83e\udd57':'\ud83e\udd63'),
-            n:w.n||'',desc:w.desc||'',tags:[],soldout:false,al:[],soupId:w.soupId||'',
+            n:w.n||'',desc:w.desc||(ALL_SOUPS.find(function(a){return a.n===w.n;})||{}).desc||'',tags:[],soldout:false,al:[],soupId:w.soupId||'',
             sz:isSal?[{l:'Salad',o:'reg',p:15}]:[{l:'Pint',o:'16oz',p:8},{l:'Quart',o:'32oz',p:15}]};
         });
         buildMenu();
@@ -2881,7 +2881,7 @@ function showItem(id){
         ${it.tags.map(t=>`<span class="tag">${t==='new'?'⭐ New This Week':t}</span>`).join('')}
         ${mySub?'<span class="tag sub">📦 Subscriber</span>':''}
       </div>
-      <p class="itd" id="item-desc-${it.id}" style="cursor:pointer;border-radius:6px;padding:4px;transition:background .2s" onclick="editItemDesc('${it.id}')" title="Tap to edit description">${it.desc||'<em style=\"color:#999\">Tap to add description...</em>'}</p>
+      <p class="itd" id="item-desc-${it.id}" style="cursor:pointer;border-radius:6px;padding:4px;transition:background .2s" ${isAdmin?'onclick="editItemDesc(\'${it.id}\')" title="Admin: tap to edit" style="cursor:pointer;border-radius:6px;padding:4px;border:1px dashed #ddd"':'style=""'}>${it.desc||''}</p>
       ${it.al.length?`<div class="alg">${it.al.map(a=>`<span>⚠️ ${a}</span>`).join('')}</div>`:''}
       <div class="srow" id="sr-${id}" data-sid="${id}">
         ${it.sz.map((sz,i)=>`<div class="so ${szi[id]===i?'active':''} ${it.soldout?'soldout':''}" onclick="${it.soldout?'':'selSzEl(this,'+i+')'}">
@@ -3192,7 +3192,7 @@ function buildRepo(f,q){
       <div class="rcb">
         <h3>${r.n}</h3>
         ${r.rating>0?`<div class="rcst">${stars(r.rating)} <span style="font-size:9px;color:var(--t3)">(${r.reviews.length})</span></div>`:''}
-        <p>${r.cat} ${r.tags.includes('vegan')?'· 🌱 Vegan':''} ${r.tags.includes('gf')?'· GF':''}</p>
+        <p>${r.cat} ${r.tags.includes('vegan')?'· 🌱 Vegan':''} ${r.tags.includes('gf')?'· GF':''}</p>${r.desc?'<p style="font-size:11px;color:var(--t3);margin:3px 0 0;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+r.desc+'</p>':''}
       </div>
     </div>`).join('');
 }
