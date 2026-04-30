@@ -1934,7 +1934,8 @@ function buildPhotoUploader(){
       +'</label>'
       +'</div>';
   });
-  if(missing.length===0) html='<div style="font-size:13px;color:var(--sg);font-weight:600">✅ All soups have photos!</div>';
+  var missingCount=allSoups.filter(function(s){return !s.photo||s.photo.length<50;}).length;
+  if(missingCount===0) html='<div style="font-size:13px;color:var(--sg);font-weight:600">✅ All soups have photos!</div>';
   el.innerHTML=html;
 }
 function handlePhotoUpload(input){
@@ -2213,7 +2214,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v5");
+  console.log("APP VERSION: 2026-04-29-v6");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
@@ -2308,7 +2309,6 @@ function showAdminLoading(show){
 
 function applyAdminData(data){
   try {
-    console.log('applyAdminData START — weekRev:', data.weekRevenue, 'orders:', (data.orders||[]).length, 'monthly:', (data.monthly||[]).length);
     // Update orders
     if(data.orders && data.orders.length > 0){
       ORDERS = data.orders;
@@ -2450,7 +2450,6 @@ function applyAdminData(data){
     }
 
     // Update ALL 8 KPI boxes directly from live data
-    console.log('applyAdminData reached KPI block');
     try {
       var _orders  = data.orders  || [];
       var _monthly = data.monthly || [];
@@ -2458,7 +2457,6 @@ function applyAdminData(data){
       var _weekOrd = data.weekOrders  || _orders.length;
 
       // Row 1: This Week + Yearly Revenue
-      console.log('Setting kpi-week-rev to', _weekRev, 'el:', $('kpi-week-rev') ? 'found' : 'MISSING');
       if($('kpi-week-rev'))    $('kpi-week-rev').textContent    = '$' + Math.round(_weekRev).toLocaleString();
       if($('kpi-week-orders')) $('kpi-week-orders').textContent = _weekOrd + ' orders this week';
       var _yr = _monthly.reduce(function(s,m){return s+(parseFloat(m.total)||0);},0);
