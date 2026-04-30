@@ -2370,7 +2370,16 @@ function applyAdminData(data){
           weeks: s.weeks,
           avg:  Math.round(s.avg||0),
           last: s.last,
-          last_date: '',
+          last_date: (function(){
+            var d = s.last_date || '';
+            if(!d) return '';
+            var parts = d.split('/');
+            if(parts.length === 2){
+              var months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+              return (months[parseInt(parts[0])]||parts[0]) + ' ' + parts[1];
+            }
+            return d;
+          })(),
           trend: s.trend
         };
       });
