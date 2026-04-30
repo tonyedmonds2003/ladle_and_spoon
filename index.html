@@ -1559,21 +1559,44 @@ function suggestNextWeek(){
     return s.cat==='Soup' && !retired[s.n] && s.avg>=50;
   });
   candidates.forEach(function(s){
-    var daysSince=Math.floor((today-s.last_sort)/10000*365+(today%10000-s.last_sort%10000)/100*30);
-    var recencyBoost=daysSince>90?2.0:daysSince>60?1.5:daysSince>30?1.2:0.8;
-    s._score=s.avg*recencyBoost;
+    // Get last_sort from original snapshot if live data doesn't have it
+    var _ls=s.last_sort;
+    if(!_ls){
+      var _orig=_SOUP_INTEL_ORIG.find(function(x){
+        var w=(s.n||'').toLowerCase().split(/\s+/).filter(function(v){return v.length>3;});
+        var xn=x.n.toLowerCase();
+        return w.filter(function(v){return xn.indexOf(v)>=0;}).length>=Math.min(2,w.length||1);
+      });
+      _ls=_orig?_orig.last_sort:0;
+    }
+    var daysSince=_ls?Math.floor((today-_ls)/10000*365+(today%10000-_ls%10000)/100*30):999;
+    // Penalty for recently featured; exclude if < 3 weeks ago
+    var recencyBoost=daysSince>90?2.0:daysSince>60?1.5:daysSince>30?1.1:daysSince>21?0.5:0.0;
+    s._score=daysSince>21?s.avg*recencyBoost:0; // suppress if featured within 3 weeks
     s._days=daysSince;
   });
+  candidates=candidates.filter(function(s){return s._score>0;});
   candidates.sort(function(a,b){return b._score-a._score;});
 
   var salads=SOUP_INTEL.filter(function(s){
     return s.cat==='Salad' && !retired[s.n];
   });
   salads.forEach(function(s){
-    var daysSince=Math.floor((today-s.last_sort)/10000*365+(today%10000-s.last_sort%10000)/100*30);
-    var recencyBoost=daysSince>90?2.0:daysSince>60?1.5:daysSince>30?1.2:0.8;
-    s._score=s.avg*recencyBoost;
+    // Get last_sort from original snapshot if live data doesn't have it
+    var _ls=s.last_sort;
+    if(!_ls){
+      var _orig=_SOUP_INTEL_ORIG.find(function(x){
+        var w=(s.n||'').toLowerCase().split(/\s+/).filter(function(v){return v.length>3;});
+        var xn=x.n.toLowerCase();
+        return w.filter(function(v){return xn.indexOf(v)>=0;}).length>=Math.min(2,w.length||1);
+      });
+      _ls=_orig?_orig.last_sort:0;
+    }
+    var daysSince=_ls?Math.floor((today-_ls)/10000*365+(today%10000-_ls%10000)/100*30):999;
+    var recencyBoost=daysSince>90?2.0:daysSince>60?1.5:daysSince>30?1.1:daysSince>21?0.5:0.0;
+    s._score=daysSince>21?s.avg*recencyBoost:0;
   });
+  salads=salads.filter(function(s){return s._score>0;});
   salads.sort(function(a,b){return b._score-a._score;});
 
   var top3soups=candidates.slice(0,3);
@@ -2214,7 +2237,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v12");
+  console.log("APP VERSION: 2026-04-29-v13");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
