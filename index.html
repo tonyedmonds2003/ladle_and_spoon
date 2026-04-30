@@ -627,6 +627,7 @@ header{background:var(--f) url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABA
       <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--bd)">
         <h3 style="font-size:14px;color:var(--t2);margin-bottom:10px">🗓️ Week Management</h3>
         <button class="bp am" style="margin-bottom:8px" onclick="weeklyReset()">🔄 Archive Week &amp; Start Fresh</button>
+        <button class="bp" style="background:#6b7280;margin-bottom:8px" onclick="weeklyResetTest()">🧪 Test Archive (Dry Run)</button>
         <button class="bp" style="background:#7c3aed;margin-bottom:8px" onclick="sendMenuNotification(MENU_ITEMS)">🔔 Send Push Notification to Subscribers</button>
         <button class="bp" style="background:#555" onclick="testMyNotification()">🧪 Test Notification on This Device</button>
       </div>
@@ -1872,17 +1873,62 @@ function resetRoutePaid(){
 }
 
 
+function weeklyResetTest(){
+  // Dry run - shows what would happen without making any changes
+  var today = new Date();
+  var day = today.getDay();
+  var monday = new Date(today);
+  monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+  var tabName = (monday.getMonth()+1) + '/' + monday.getDate();
+  var localOrders = [];
+  try{ localOrders = JSON.parse(localStorage.getItem('submitted_orders')||'[]'); }catch(e){}
+  var liveOrders = ORDERS || [];
+  var msg = '🧪 DRY RUN — Nothing will change\n\n';
+  msg += '📋 What WOULD happen:\n';
+  msg += '1. Rename Sheet tab "Soup orders" → "' + tabName + '"\n';
+  msg += '2. Create fresh empty "Soup orders" tab\n';
+  msg += '3. Clear ' + localOrders.length + ' local app orders from this device\n';
+  msg += '4. Clear session cache (admin will reload fresh)\n';
+  msg += '5. Clear menu items (Lia sets new menu in Sheet)\n\n';
+  msg += '📊 Current state:\n';
+  msg += '• Live orders in Sheet: ' + liveOrders.length + '\n';
+  msg += '• Local orders on device: ' + localOrders.length + '\n';
+  msg += '• Archive tab name would be: ' + tabName + '\n\n';
+  msg += '✅ No changes made. Tap "Archive Week & Start Fresh" when ready to go live.';
+  // Also verify Apps Script connection
+  fetch(APPS_SCRIPT_URL + '?type=archive_week&dry_run=true')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var sheetMsg = d.dry_run ? '\n\n🔗 Sheet connection: ✅ OK\n' + d.message : '\n\n⚠️ Sheet: ' + (d.error||JSON.stringify(d));
+      alert(msg + sheetMsg);
+    })
+    .catch(function(err){ alert(msg + '\n\n⚠️ Sheet connection failed: ' + err.message); });
+}
+
 function weeklyReset(){
-  if(!confirm('Archive this week and start fresh for next week?'))return;
-  // Archive current orders
-  const week=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  let archived={};try{archived=JSON.parse(localStorage.getItem('archived_weeks')||'{}');}catch(e){}
-  const orders=JSON.parse(localStorage.getItem('submitted_orders')||'[]');
-  if(orders.length>0){archived[week]=orders;localStorage.setItem('archived_weeks',JSON.stringify(archived));}
-  // Clear current
-  localStorage.removeItem('submitted_orders');
-  localStorage.removeItem('route_paid');
-  toast('✅ Week archived! Ready for next week. Update menu items and publish.');
+  if(!confirm('Archive this week in the Sheet and start fresh? This cannot be undone.'))return;
+  toast('⏳ Archiving week...');
+  // 1. Archive in Google Sheet
+  fetch(APPS_SCRIPT_URL + '?type=archive_week')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.success){
+        // 2. Clear localStorage orders
+        try{ localStorage.removeItem('submitted_orders'); }catch(e){}
+        try{ localStorage.removeItem('route_paid'); }catch(e){}
+        // 3. Clear session cache so admin refreshes
+        try{ sessionStorage.removeItem('admin_data'); sessionStorage.removeItem('admin_data_time'); }catch(e){}
+        // 4. Clear MENU_ITEMS so Lia can set next week's menu
+        MENU_ITEMS = [];
+        WKMENU = [];
+        buildMenu();
+        buildOrders();
+        toast('✅ Week ' + (d.archived||'') + ' archived! Update menu in the Sheet and publish.');
+      } else {
+        toast('⚠️ Archive failed: ' + (d.error||'unknown error'));
+      }
+    })
+    .catch(function(err){ toast('⚠️ Could not reach Sheet: ' + err.message); });
 }
 
 
@@ -2241,7 +2287,7 @@ function openRouteInMaps(){
   window.open('https://www.google.com/maps/dir/'+base+'/'+wpts.join('/')+'/'+base,'_blank');
 }
 window.onload = () => {
-  console.log("APP VERSION: 2026-04-29-v19");
+  console.log("APP VERSION: 2026-04-29-v21");
   // Show first name on profile button if profile exists
   var _prof=getProfile();
   if(_prof.name){var _pb=$("pfb");if(_pb)_pb.textContent="👤 "+_prof.name.split(" ")[0];}
